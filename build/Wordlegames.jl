@@ -1,25 +1,19 @@
 module Wordlegames
 
-using PrettyTables: pretty_table
+using PrettyTables
 using Random
-using StatsBase
 
 include("play.jl")
 
-export
-    GamePool,
+export GamePool,
     Random,
     bincounts!,
-    entropybase2,
-    expectedpoolsize!,
     gamesummary,
     playgame!,
-    pretty_table,
     reset!,
     score,
     scoreupdate!,
     showgame!,
-    tiles,
-    updateguess!
+    tiles
 
 end
