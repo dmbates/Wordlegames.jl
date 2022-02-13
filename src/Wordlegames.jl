@@ -2,11 +2,11 @@ module Wordlegames
 
 using PrettyTables: pretty_table
 using Random
+using ThreadsX
 
 include("play.jl")
 
-export
-    GamePool,
+export GamePool,
     Random,
     bincounts!,
     entropybase2,

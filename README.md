@@ -155,17 +155,15 @@ Playing all possible Wordle games in this way takes less than half a second on m
 
 ```jl
 julia> versioninfo()
-Julia Version 1.7.2
-Commit bf53498635 (2022-02-06 15:21 UTC)
+Julia Version 1.8.0-DEV.1526
+Commit 635449dabe (2022-02-13 12:15 UTC)
 Platform Info:
-  OS: Linux (x86_64-pc-linux-gnu)
-  CPU: 11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz
+  OS: Linux (x86_64-linux-gnu)
+  CPU: 8 × 11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz
   WORD_SIZE: 64
   LIBM: libopenlibm
-  LLVM: libLLVM-12.0.1 (ORCJIT, tigerlake)
-Environment:
-  JULIA_EDITOR = code
-  JULIA_NUM_THREADS = 8
+  LLVM: libLLVM-13.0.1 (ORCJIT, tigerlake)
+  Threads: 4 on 8 virtual cores
 ```
 
 The mean and standard deviation of the number of guesses for Wordle using this strategy
@@ -251,6 +249,20 @@ julia> barplot(countmap(nguessprimel))
 
 julia> (mean(nguessprimel), std(nguessprimel))
 (3.7467415999043405, 0.6907319195032124)
+
+julia> showgame!(primel, only(findall(==(7), nguessprimel)))
+┌────────┬────────────┬──────────┬──────────┬──────────┐
+│  guess │      score │ poolsize │ expected │  entropy │
+│ String │     String │    Int64 │  Float32 │  Float32 │
+├────────┼────────────┼──────────┼──────────┼──────────┤
+│  17923 │ 🟨🟫🟫🟨🟫 │     8363 │  121.542 │  6.62459 │
+│  20681 │ 🟨🟫🟫🟩🟩 │      140 │  9.49515 │  4.76711 │
+│  41281 │ 🟩🟨🟩🟩🟩 │        8 │      1.4 │      2.0 │
+│  42281 │ 🟩🟨🟩🟩🟩 │        4 │      1.0 │ 0.811278 │
+│  44281 │ 🟩🟨🟩🟩🟩 │        3 │  5.46809 │ 0.918296 │
+│  45281 │ 🟩🟫🟩🟩🟩 │        2 │      1.0 │      1.0 │
+│  48281 │ 🟩🟩🟩🟩🟩 │        1 │      1.0 │     -0.0 │
+└────────┴────────────┴──────────┴──────────┴──────────┘
 ```
 
 I suspect the smaller standard deviation in `primel` is because the number of characters that can occur in each position is smaller (9 in the first position, 10 for the others) than for `wordle` (26).
@@ -316,7 +328,7 @@ julia> pretty_table((;score = tiles.(0:242, 5), counts = wordle.counts, probs = 
                      220 rows omitted
 ```
 
-Assuming the targets are equally likely, which apparently is the case, the probability of each score is the count for that score divided by size of the active target pool.
+Assuming the targets are equally likely, which apparently is the case in the online games, the probability of each score is the count for that score divided by size of the active target pool.
 The expected pool size is the sum of the `counts` multiplied by the `probs` or, equivalently, the sum of the squared counts divided by the sum of the counts.
 
 ```jl
@@ -326,8 +338,86 @@ julia> sum(abs2, wordle.counts) / sum(wordle.counts)  # abs2(x) returns x * x
 
 The next guess is chosen to minimize the expected pool size.
 
-An alternative criterion is to maximize the [entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory)) of the probabilities.
+### MAximizing entropy
 
-When measured in bits, the entropy of the `n` probabilities is $-\sum_{i=1}^n p_i\,log_2(p_i)
-$
+An alternative criterion is to maximize the [entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory)) of the probabilities associated with the possible scores, i.e. the `probs` field.
 
+Measured in bits, the entropy of the `n` probabilities is $-\sum_{i=1}^n p_i\,log_2(p_i)$
+
+It measures how the probability is among the possible scores.
+The best case is for each of the `n` possible scores to have probability `1/n` of occurring so that, whichever score is returned, there will only be a small number of targets with that score.
+It is not possible to get that from a starting guess but, sometimes when the target pool is small, a particular guess may be able to split the remaining `k` targets into `k` distinct scores.
+
+In particular, this always occurs when there are only two targets left.
+
+Chosing a guess so as to maximize the entropy provides slightly better performance, on average.
+
+```jl
+julia> wordle2 = GamePool(collect(readlines("./data/Wordletargets.txt")); guesstype=:entropy);
+
+julia> ngwrdl2 = [length(playgame!(wordle2, k).guesses) for k in axes(wordle2.active, 1)];
+
+julia> barplot(countmap(ngwrdl2))
+     ┌                                        ┐ 
+   1 ┤ 1                                        
+   2 ┤■■■■■ 131                                 
+   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 978   
+   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 928     
+   5 ┤■■■■■■■■ 217                              
+   6 ┤■■ 49                                     
+   7 ┤ 9                                        
+   8 ┤ 2                                        
+     └                                        ┘ 
+
+julia> (mean(ngwrdl2), std(ngwrdl2))
+(3.614254859611231, 0.8552369532287724)
+```
+
+Two of the games that took 8 guesses under the expected pool size strategy also take 8 guesses under the maximum entropy strategy
+
+```jl
+julia> showgame!.(Ref(wordle2), findall(==(8), ngwrdl2));
+┌────────┬────────────┬──────────┬──────────┬──────────┐
+│  guess │      score │ poolsize │ expected │  entropy │
+│ String │     String │    Int64 │  Float32 │  Float32 │
+├────────┼────────────┼──────────┼──────────┼──────────┤
+│  raise │ 🟨🟫🟫🟫🟨 │     2315 │  61.0009 │  5.87791 │
+│  outer │ 🟨🟫🟫🟩🟩 │      102 │  4.54348 │  4.09399 │
+│  mower │ 🟫🟩🟫🟩🟩 │       16 │      2.0 │  1.91974 │
+│  cover │ 🟫🟩🟫🟩🟩 │        9 │     1.75 │  1.65774 │
+│  joker │ 🟫🟩🟫🟩🟩 │        5 │      1.0 │  1.37095 │
+│  boxer │ 🟫🟩🟫🟩🟩 │        3 │  5.29268 │ 0.918296 │
+│  foyer │ 🟫🟩🟫🟩🟩 │        2 │      1.0 │      1.0 │
+│  goner │ 🟩🟩🟩🟩🟩 │        1 │  3.34783 │     -0.0 │
+└────────┴────────────┴──────────┴──────────┴──────────┘
+┌────────┬────────────┬──────────┬──────────┬──────────┐
+│  guess │      score │ poolsize │ expected │  entropy │
+│ String │     String │    Int64 │  Float32 │  Float32 │
+├────────┼────────────┼──────────┼──────────┼──────────┤
+│  raise │ 🟫🟩🟫🟫🟫 │     2315 │  61.0009 │  5.87791 │
+│  tangy │ 🟨🟩🟫🟫🟫 │       91 │  4.54348 │  4.03061 │
+│  caput │ 🟨🟩🟫🟫🟨 │       13 │      2.0 │   2.4997 │
+│  batch │ 🟫🟩🟩🟩🟩 │        5 │     1.75 │ 0.721928 │
+│  hatch │ 🟨🟩🟩🟩🟩 │        4 │      1.0 │ 0.811278 │
+│  latch │ 🟫🟩🟩🟩🟩 │        3 │  5.29268 │ 0.918296 │
+│  match │ 🟫🟩🟩🟩🟩 │        2 │      1.0 │      1.0 │
+│  watch │ 🟩🟩🟩🟩🟩 │        1 │  3.34783 │     -0.0 │
+└────────┴────────────┴──────────┴──────────┴──────────┘
+```
+
+but this strategy can find `"wound"` in six guesses.
+
+```jl
+julia> showgame!(wordle2, "wound")
+┌────────┬────────────┬──────────┬──────────┬──────────┐
+│  guess │      score │ poolsize │ expected │  entropy │
+│ String │     String │    Int64 │  Float32 │  Float32 │
+├────────┼────────────┼──────────┼──────────┼──────────┤
+│  raise │ 🟫🟫🟫🟫🟫 │     2315 │  61.0009 │  5.87791 │
+│  mulch │ 🟫🟨🟫🟫🟫 │      168 │  4.54348 │  5.21165 │
+│  bound │ 🟫🟩🟩🟩🟩 │        8 │      2.0 │  2.40564 │
+│  found │ 🟫🟩🟩🟩🟩 │        3 │     1.75 │ 0.918296 │
+│  pound │ 🟫🟩🟩🟩🟩 │        2 │      1.0 │      1.0 │
+│  wound │ 🟩🟩🟩🟩🟩 │        1 │  5.29268 │     -0.0 │
+└────────┴────────────┴──────────┴──────────┴──────────┘
+```

@@ -1,8 +1,7 @@
 """
-    GamePool{N,S}
+    GamePool{N}
 
 A struct that defines a Wordle-like game with targets of length `N`.
-`S <: Unsigned` is the smallest type such that `3 ^ N < typemax{S}`. 
 
 The fields are:
 
@@ -37,7 +36,7 @@ end
 function GamePool(
     targets::Vector{NTuple{N,Char}},
     guesses::Vector{NTuple{N,Char}};
-    guesstype::Symbol = :expected,
+    guesstype::Symbol=:expected,
     hardmode::Bool=true,
 ) where {N}
     if guesstype ∉ (:entropy, :expected)
@@ -47,34 +46,33 @@ function GamePool(
         throw(ArgumentError("!hardmode (easy mode?) not yet implemented"))
     end
     ## enhancements - remove any duplicates in targets and guesses and sort them
-    S = scoretype(N)
-    ## Can this easily be adapted for multiple threads? `score` is pure. ThreadsX?
-    allscores = [S(score(g, t)) for t in targets, g in guesses]
-    ntargets = length(targets)
+    allscores = ThreadsX.map(
+        t -> score(last(t), first(t)), Iterators.product(targets, guesses)
+    )
     return updateguess!(
         GamePool(
             targets,
             guesses,
             allscores,
-            trues(ntargets),
-            zeros(Int, 3 ^ N),
-            zeros(Float32, 3 ^ N),
+            trues(length(targets)),
+            zeros(Int, 3^N),
+            zeros(Float32, 3^N),
             sizehint!(NTuple{N,Char}[], 10),
             sizehint!(Int[], 10),
-            sizehint!(S[], 10),
+            sizehint!(eltype(allscores)[], 10),
             sizehint!(Int[], 10),
             sizehint!(Float32[], 10),
             sizehint!(Float32[], 10),
             guesstype,
             hardmode,
-        )
+        ),
     )
 end
 
 function GamePool(
     targets::AbstractVector{<:AbstractString},
     guesses::AbstractVector{<:AbstractString};
-    guesstype::Symbol = :expected,
+    guesstype::Symbol=:expected,
     hardmode::Bool=true,
 )
     N = length(first(targets))
@@ -85,14 +83,14 @@ function GamePool(
 end
 
 function GamePool(
-    pool::Vector{NTuple{N,Char}};
-    guesstype::Symbol = :expected,
-    hardmode::Bool=true,
+    pool::Vector{NTuple{N,Char}}; guesstype::Symbol=:expected, hardmode::Bool=true
 ) where {N}
     return GamePool(pool, pool; guesstype, hardmode)
 end
 
-function GamePool(pool::AbstractVector{<:AbstractString}; guesstype::Symbol=:expected, hardmode::Bool=true)
+function GamePool(
+    pool::AbstractVector{<:AbstractString}; guesstype::Symbol=:expected, hardmode::Bool=true
+)
     N = length(first(pool))
     if any(≠(N) ∘ length, pool)
         throw(ArgumentError("`pool` elements must have the same length"))
@@ -100,11 +98,7 @@ function GamePool(pool::AbstractVector{<:AbstractString}; guesstype::Symbol=:exp
     return GamePool(NTuple{N,Char}.(pool); guesstype, hardmode)
 end
 
-function GamePool(
-    pool::AbstractVector;
-    guesstype::Symbol=:expected,
-    hardmode::Bool=true,
-)
+function GamePool(pool::AbstractVector; guesstype::Symbol=:expected, hardmode::Bool=true)
     return GamePool(string.(pool); guesstype, hardmode)
 end
 
@@ -146,7 +140,7 @@ of entropy in information theory.
 all(0 .≤ probs .≤ 1) && sum(probs) ≈ 1 are assumed but not checked.
 """
 function entropybase2(probs::AbstractVector{<:AbstractFloat})
-    return -sum(x -> iszero(x) ? zero(eltype(probs)) : x * log2(x), probs)
+    return -sum(x -> iszero(x) ? zero(x) : x * log2(x), probs)
 end
 
 entropybase2(gp::GamePool) = entropybase2(gp.probs)
@@ -257,6 +251,17 @@ function score(guess, target)
     return s
 end
 
+function score(guess::NTuple{N}, target::NTuple{N}) where {N}
+    S = scoretype(N)
+    s = zero(S)
+    for i in 1:N
+        s *= S(3)
+        g = guess[i]
+        s += (g == target[i] ? S(2) : S(g ∈ target))
+    end
+    return s
+end
+
 score(gp::GamePool, targetind::Integer) = gp.allscores[targetind, last(gp.guessinds)]
 
 """
@@ -264,12 +269,21 @@ score(gp::GamePool, targetind::Integer) = gp.allscores[targetind, last(gp.guessi
 
 Return the smallest type `T<:Unsigned` for storing the scores from a pool of items of length `nchar`
 """
-function scoretype(nchar)
-    if nchar > 80
+@inline function scoretype(nchar)
+    S = if nchar ≤ 5
+        UInt8
+    elseif nchar ≤ 10
+        UInt16
+    elseif nchar ≤ 20
+        UInt32
+    elseif nchar ≤ 40
+        UInt64
+    elseif nchar ≤ 80
+        UInt128
+    else
         error("pool element length = $nchar must be < 80")
     end
-    unsignedtypes = [UInt8, UInt16, UInt32, UInt64, UInt128]
-    return unsignedtypes[findfirst(>(nchar), log.(3, typemax.(unsignedtypes)))]
+    return S
 end
 
 """
@@ -279,6 +293,7 @@ Update `gp` with the score `sc`
 """
 function scoreupdate!(gp::GamePool, sc::Integer)
     (; allscores, active, counts, probs, guessinds) = gp
+    sc = eltype(allscores)(sc)
     push!(gp.scores, sc)
     sc == length(counts) - 1 && return gp
     active .&= (view(allscores, :, last(guessinds)) .== sc)
@@ -324,7 +339,7 @@ Choose the optimal guess according to `gp.guesstype` and push! new values onto `
 `gp.guessinds`, `gp.expected` and `gp.entropy`
 """
 function updateguess!(gp::GamePool)
-    (; guesspool, active, counts, probs, guesses, guessinds, poolsizes, expected, entropy, guesstype) = gp
+    (; active, counts, probs, guesstype) = gp
     gind, xpctd, entrpy = 0, Inf, -Inf
     if guesstype == :expected
         for (k, a) in enumerate(active)
@@ -348,10 +363,10 @@ function updateguess!(gp::GamePool)
     else
         throw(error("gp.guesstype = $(gp.guesstype) should be `:expected` or `:entropy`"))
     end
-    push!(guesses, guesspool[gind])
-    push!(guessinds, gind)
-    push!(poolsizes, sum(active))
-    push!(expected, xpctd)
-    push!(entropy, entrpy)
+    push!(gp.guesses, gp.guesspool[gind])
+    push!(gp.guessinds, gind)
+    push!(gp.poolsizes, sum(active))
+    push!(gp.expected, xpctd)
+    push!(gp.entropy, entrpy)
     return gp
 end
