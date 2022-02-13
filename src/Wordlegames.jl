@@ -2,7 +2,6 @@ module Wordlegames
 
 using PrettyTables: pretty_table
 using Random
-using StatsBase
 
 include("play.jl")
 
