@@ -9,6 +9,8 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
 
 [compat]
+PrettyTables = "1"
+ThreadsX = "0.1"
 julia = "1.7"
 
 [extras]
