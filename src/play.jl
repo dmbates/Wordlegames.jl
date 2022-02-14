@@ -1,7 +1,9 @@
 """
-    GamePool{N}
+    GamePool{N,S}
 
 A struct that defines a Wordle-like game with targets of length `N`.
+`S <: Unsigned` is the smallest unsigned integer type that can store values in the
+range `0:(3 ^ N - 1)`, evaluated as `Wordlegames.scoretype(N)`
 
 The fields are:
 
@@ -10,11 +12,22 @@ The fields are:
 - `allscores`: a `Matrix{S}` where `allscores[i,j] = score(guesspool[j], targets[i])`
 - `active`: a `BitVector`. The active target pool is `targets[active]`.
 - `counts`: `Vector{Int}` of length `3 ^ N` in which bin counts are accumulated
+- `probs`: `Vector{Float64}` containing `counts ./ sum(counts)`
 - `guesses`: `Vector{NTuple{N,Char}}`
-- `guessinds`: `Vector{Int}` where the indexes into `pool` of guesses are stored
+- `guessinds`: `Vector{Int}` where the indexes into `guesspool` of guesses are stored
 - `scores`: scores of the guesses as a `Vector{S}`
-- `entropy`: `Vector{Float32}` of the entropy after each guess
+- `poolsizes`: `Vector{Int}` target pool size for prior to each guess being evaluated
+- `expected`: `Vector{Float32}` of expected pool sizes after each guess is scored
+- `entropy`: `Vector{Float32}` the (base2) entropy for each guess
+- `guesstype`: `Symbol` - either `:expected`, the default, or `:entropy`
 - `hardmode`: `Bool` - should the game be played in "Hard Mode"?
+
+Constructor signatures include
+
+    GamePool(targets::Vector{NTuple{N,Char}}, guesses::Vector{NTuple{N,Char}}; guesstype::Symbol=:expected, hardmode::Bool=true) where {N}
+    GamePool(pool::Vector{NTuple{N,Char}}; guesstype::Symbol=:expected, hardmode::Bool=true) where {N}
+    GamePool(pool::AbstractVector{<:AbstractString}; guesstype::Symbol=:expected, hardmode::Bool=true)
+    GamePool(pool::AbstractVector; guesstype::Symbol=:expected, hardmode::Bool=true)
 """
 struct GamePool{N,S}
     targetpool::Vector{NTuple{N,Char}}
@@ -104,9 +117,10 @@ end
 
 """
     bincounts!(counts, active, scorevec)
+    bincounts!(gp::GamePool, k)
 
-Return `probs` overwritten with bin probabilities from `scorevec[active]`.
-`counts` is also overwritten, with the bin counts.
+Return `counts` overwritten with bin probabilities from `scorevec[active]` or
+update `gp.counts` from `gp.active` and `gp.allscores[:,k]`.
 """
 function bincounts!(
     counts::AbstractVector{<:Integer},
@@ -133,11 +147,11 @@ end
 
 Return the base-2 entropy of `probs` or `gp.probs`.  This is the entropy measured in bits.
 
-See https://en.wikipedia.org/wiki/Entropy_(information_theory) for the definition
-of entropy in information theory.
+See the [Wikipedia entry](https://en.wikipedia.org/wiki/Entropy_(information_theory))
+for the definition of entropy in information theory.
 
-`probs` is assumed to be a discrete probability distribution.  That is
-all(0 .≤ probs .≤ 1) && sum(probs) ≈ 1 are assumed but not checked.
+`probs` is assumed to be a discrete probability distribution.  That is the conditions
+`all(0 .≤ probs .≤ 1) && sum(probs) ≈ 1` are assumed (but not checked).
 """
 function entropybase2(probs::AbstractVector{<:AbstractFloat})
     return -sum(x -> iszero(x) ? zero(x) : x * log2(x), probs)
@@ -161,6 +175,8 @@ end
     gamesummary(gp::GamePool)
 
 Return a summary of a game as a columntable (i.e. a `NamedTuple` of `Vector`s of the same length).
+
+The table contains columns `guess` (as `String`s), `score`, `poolsize`, `expected`, and `entropy`.
 """
 function gamesummary(gp::GamePool{N}) where {N}
     (; guessinds, scores) = gp
@@ -177,8 +193,15 @@ end
 """
     playgame!(gp::GamePool, ind::Integer)
     playgame!(gp::GamePool[, rng::AbstractRNG])
+    playgame!(gp::GamePool{N}, target::NTuple{N,Char}) where {N}
+    playgame!(gp::GamePool{N}, target::AbstractString) where {N}
 
 Return `gp` after playing a game with target `gp.targetpool[ind]`, or a randomly chosen target
+or `target` given as an `AbstractString` or `NTuple{N,Char}`.
+
+A `target` as a string must have `length(target) == N`.
+
+See also: [`showgame!`](@ref)
 """
 function playgame!(gp::GamePool{N}, ind::Integer) where {N}
     psz = length(gp.targetpool)
@@ -224,6 +247,7 @@ function reset!(gp::GamePool)
         deleteat!(gp.guesses, trailing)
         deleteat!(gp.guessinds, trailing)
         deleteat!(gp.poolsizes, trailing)
+        deleteat!(gp.expected, trailing)
         deleteat!(gp.entropy, trailing)
     end
     empty!(gp.scores)
@@ -232,15 +256,19 @@ end
 
 """
     score(guess, target)
+    score(gp::GamePool, targetind::Integer)
 
 Return a generalized Wordle score for `guess` at `target`, as an `Int` in `0:((3^length(zip(guess,target))) - 1)`.
+
+The second method returns a precomputed score at `gp.allscores[targetind, last(gp.guessinds)]`.
 
 In Wordle both `guess` and `target` would be length-5 character strings and each position
 in `guess` is scored as green if it matches `target` in the same position, yellow if it
 matches `target` in another position, and gray if there is no match. This function returns
 such a score as a number whose base-3 representation is 0 for no match, 1 for a match in
-another position and 2 for a match in the same position.  See `tiles` for converting this
-numeric score to colored tiles.
+another position and 2 for a match in the same position.
+    
+See also: [`tiles`](@ref) for converting this numeric score to colored tiles.
 """
 function score(guess, target)
     s = 0
@@ -270,7 +298,10 @@ score(gp::GamePool, targetind::Integer) = gp.allscores[targetind, last(gp.guessi
 Return the smallest type `T<:Unsigned` for storing the scores from a pool of items of length `nchar`
 """
 @inline function scoretype(nchar)
-    S = if nchar ≤ 5
+    if nchar ≤ 0 || nchar > 80
+        throw(ArgumentError("nchar = $nchar is not in `1:80`"))
+    end
+    return if nchar ≤ 5
         UInt8
     elseif nchar ≤ 10
         UInt16
@@ -278,21 +309,22 @@ Return the smallest type `T<:Unsigned` for storing the scores from a pool of ite
         UInt32
     elseif nchar ≤ 40
         UInt64
-    elseif nchar ≤ 80
-        UInt128
     else
-        error("pool element length = $nchar must be < 80")
+        UInt128
     end
-    return S
 end
 
 """
     scoreupdate!(gp::GamePool, sc::Integer)
+    scoreupdate!(gp::GamePool{N}, scv::Vector{<:Integer}) where {N}
 
-Update `gp` with the score `sc`
+Update `gp` with the score `sc`, or a vector `scv` of length `N` whose elements are `0`, `1`, or `2` for `last(gp.guesses)`
+
+Always `push!(gp.scores, sc)`.  If `sc` is the maximum possible score, `3 ^ N - 1`, the game is over and return `gp`.
+Otherwise, update `gp.active` and call `updateguess!(gp)`.
 """
 function scoreupdate!(gp::GamePool, sc::Integer)
-    (; allscores, active, counts, probs, guessinds) = gp
+    (; allscores, active, counts, guessinds) = gp
     sc = eltype(allscores)(sc)
     push!(gp.scores, sc)
     sc == length(counts) - 1 && return gp
@@ -324,8 +356,8 @@ showgame!(gp::GamePool) = showgame!(gp, rand(gp.targetpool))
 Return a length-`ntiles` `String` tile pattern from the numeric score `score`.
 """
 function tiles(sc, ntiles)
-    result = Char[]    # initialize to an empty array of Char
-    for _ in 1:ntiles  # _ indicates we won't use the counter
+    result = sizehint!(Char[], ntiles)    # initialize to an empty array of Char
+    for _ in 1:ntiles                     # _ indicates we won't use the value of the iterator
         sc, r = divrem(sc, 3)
         push!(result, iszero(r) ? '🟫' : (isone(r) ? '🟨' : '🟩'))
     end
@@ -353,10 +385,10 @@ function updateguess!(gp::GamePool)
     elseif guesstype == :entropy
         for (k, a) in enumerate(active)
             if a
-                expectedpoolsize!(bincounts!(gp, k))  # updates probs
+                thisexpected = expectedpoolsize!(bincounts!(gp, k))  # updates gp.probs
                 thisentropy = entropybase2(gp)
                 if thisentropy > entrpy
-                    gind, xpctd, entrpy = k, sum(counts .* probs), thisentropy
+                    gind, xpctd, entrpy = k, thisexpected, thisentropy
                 end
             end
         end

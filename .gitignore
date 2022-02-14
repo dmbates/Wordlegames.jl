@@ -1,5 +1,6 @@
-docs/build
-docs/site
-docs/src/assets/*.svg
-test/scratch.jl
+*.jl.*.cov
+*.jl.cov
+*.jl.mem
+/docs/build
 Manifest.toml
+lcov.info
