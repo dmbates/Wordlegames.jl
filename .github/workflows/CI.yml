@@ -53,6 +53,6 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Documenter: DocMeta, doctest
-            using Example
-            DocMeta.setdocmeta!(Example, :DocTestSetup, :(using Example); recursive=true)
-            doctest(Example)'
+            using Wordlegames
+            DocMeta.setdocmeta!(Wordlegames, :DocTestSetup, :(using Wordlegames); recursive=true)
+            doctest(Wordlegames)'
