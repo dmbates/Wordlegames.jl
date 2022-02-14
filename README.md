@@ -13,7 +13,7 @@ A game is represented by a `GamePool` of targets, potential guesses, and some ga
 By default the game is played as in the "Hard Mode" setting on the Wordle app and web site, which means that the only guesses allowed at each turn are those in the current target pool.
 As a consequence, the initial pool of potential guesses is the same as the initial target pool.
 
-Consider a game played on the [Primel site])https://cojofra.github.io/primel/) on 2022-02-11 resulting in the score
+Consider a game played on the [Primel site](https://cojofra.github.io/primel/) on 2022-02-11 resulting in the score
 
 ```
 Primel 237 4/6*
