@@ -179,11 +179,11 @@ function gamesummary(gp::GamePool{N}) where {N}
     (; guessinds, scores) = gp
     length(scores) == length(guessinds) || throw(ArgumentError("Game gp is not finished."))
     return (;                      # columntable as a NamedTuple
-        guess=[string(g...) for g in gp.guesses],
-        score=tiles.(scores, N),
         poolsize=gp.poolsizes,
+        guess=[string(g...) for g in gp.guesses],
         expected=gp.expected,
         entropy=gp.entropy,
+        score=tiles.(scores, N),
     )
 end
 
