@@ -24,8 +24,8 @@ const primelxpc = GamePool(primes5; guesstype=MinimizeExpected)
     gs = gamesummary(primel)
     @test isa(gs, NamedTuple)
     @test Tables.schema(gs) == Tables.Schema(
-        (:guess, :score, :poolsize, :expected, :entropy),
-        (String, String, Int, Float64, Float64),
+        (:poolsize, :guess, :expected, :entropy, :score),
+        (Int, String, Float64, Float64, String),
     )
     Random.seed!(1234321)
     playgame!(primel)
