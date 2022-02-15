@@ -5,8 +5,8 @@ A [Julia](https://julialang.org) package to play and analyze `Wordle` and Wordle
 ```@docs
 GamePool
 bincounts!
-entropybase2
-expectedpoolsize!
+entropy2
+expectedpoolsize
 gamesummary
 playgame!
 reset!
