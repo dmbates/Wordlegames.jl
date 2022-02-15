@@ -1,9 +1,15 @@
+abstract type GuessType end
+
+struct MaximizeEntropy <: GuessType end
+struct MinimizeExpected <: GuessType end
+
 """
-    GamePool{N,S}
+    GamePool{N,S,G}
 
 A struct that defines a Wordle-like game with targets of length `N`.
 `S <: Unsigned` is the smallest unsigned integer type that can store values in the
-range `0:(3 ^ N - 1)`, evaluated as `Wordlegames.scoretype(N)`
+range `0:(3 ^ N - 1)`, evaluated as `Wordlegames.scoretype(N)` and `G <: GuessType`
+is the guess type, which defaults to `MaximizeEntropy`.
 
 The fields are:
 
@@ -12,48 +18,44 @@ The fields are:
 - `allscores`: a `Matrix{S}` where `allscores[i,j] = score(guesspool[j], targets[i])`
 - `active`: a `BitVector`. The active target pool is `targets[active]`.
 - `counts`: `Vector{Int}` of length `3 ^ N` in which bin counts are accumulated
-- `probs`: `Vector{Float64}` containing `counts ./ sum(counts)`
 - `guesses`: `Vector{NTuple{N,Char}}`
 - `guessinds`: `Vector{Int}` where the indexes into `guesspool` of guesses are stored
 - `scores`: scores of the guesses as a `Vector{S}`
 - `poolsizes`: `Vector{Int}` target pool size for prior to each guess being evaluated
-- `expected`: `Vector{Float32}` of expected pool sizes after each guess is scored
-- `entropy`: `Vector{Float32}` the (base2) entropy for each guess
-- `guesstype`: `Symbol` - either `:expected`, the default, or `:entropy`
+- `expected`: `Vector{Float64}` of expected pool sizes after each guess is scored
+- `entropy`: `Vector{Float64}` the (base2) entropy for each guess
 - `hardmode`: `Bool` - should the game be played in "Hard Mode"?
 
 Constructor signatures include
 
-    GamePool(targets::Vector{NTuple{N,Char}}, guesses::Vector{NTuple{N,Char}}; guesstype::Symbol=:expected, hardmode::Bool=true) where {N}
-    GamePool(pool::Vector{NTuple{N,Char}}; guesstype::Symbol=:expected, hardmode::Bool=true) where {N}
-    GamePool(pool::AbstractVector{<:AbstractString}; guesstype::Symbol=:expected, hardmode::Bool=true)
-    GamePool(pool::AbstractVector; guesstype::Symbol=:expected, hardmode::Bool=true)
+    GamePool(targets::Vector{NTuple{N,Char}}, guesses::Vector{NTuple{N,Char}}; guesstype=MaximizeEntropy, hardmode::Bool=true) where {N}
+    GamePool(pool::Vector{NTuple{N,Char}}; guesstype=MaximizeEntropy, hardmode::Bool=true) where {N}
+    GamePool(pool::AbstractVector{<:AbstractString}; guesstype=MaximizeEntropy, hardmode::Bool=true)
+    GamePool(pool::AbstractVector; guesstype=MaximizeEntropy, hardmode::Bool=true)
 """
-struct GamePool{N,S}
+struct GamePool{N,S,G}
     targetpool::Vector{NTuple{N,Char}}
     guesspool::Vector{NTuple{N,Char}}
     allscores::Matrix{S}
     active::BitVector
     counts::Vector{Int}
-    probs::Vector{Float32}
     guesses::Vector{NTuple{N,Char}}
     guessinds::Vector{Int}
     scores::Vector{S}
     poolsizes::Vector{Int}
-    expected::Vector{Float32}
-    entropy::Vector{Float32}
-    guesstype::Symbol
+    expected::Vector{Float64}
+    entropy::Vector{Float64}
     hardmode::Bool
 end
 
 function GamePool(
     targets::Vector{NTuple{N,Char}},
     guesses::Vector{NTuple{N,Char}};
-    guesstype::Symbol=:expected,
+    guesstype=MaximizeEntropy,
     hardmode::Bool=true,
 ) where {N}
-    if guesstype ∉ (:entropy, :expected)
-        throw(ArgumentError("guesstype = $guesstype should be `:entropy` or `:expected`"))
+    if !(guesstype <: GuessType)
+        throw(ArgumentError("guesstype = $guesstype should be `MaximizeEntropy` or `MinimizeExpected`"))
     end
     if !hardmode
         throw(ArgumentError("!hardmode (easy mode?) not yet implemented"))
@@ -62,21 +64,20 @@ function GamePool(
     allscores = ThreadsX.map(
         t -> score(last(t), first(t)), Iterators.product(targets, guesses)
     )
+    S = eltype(allscores)
     return updateguess!(
-        GamePool(
+        GamePool{N,S,guesstype}(
             targets,
             guesses,
             allscores,
             trues(length(targets)),
-            zeros(Int, 3^N),
-            zeros(Float32, 3^N),
+            zeros(Int, 3 ^ N),
             sizehint!(NTuple{N,Char}[], 10),
             sizehint!(Int[], 10),
-            sizehint!(eltype(allscores)[], 10),
+            sizehint!(S[], 10),
             sizehint!(Int[], 10),
-            sizehint!(Float32[], 10),
-            sizehint!(Float32[], 10),
-            guesstype,
+            sizehint!(Float64[], 10),
+            sizehint!(Float64[], 10),
             hardmode,
         ),
     )
@@ -85,8 +86,8 @@ end
 function GamePool(
     targets::AbstractVector{<:AbstractString},
     guesses::AbstractVector{<:AbstractString};
-    guesstype::Symbol=:expected,
-    hardmode::Bool=true,
+    guesstype = MaximizeEntropy,
+    hardmode::Bool = true,
 )
     N = length(first(targets))
     if any(≠(N) ∘ length, targets) || any(≠(N) ∘ length, guesses)
@@ -96,13 +97,13 @@ function GamePool(
 end
 
 function GamePool(
-    pool::Vector{NTuple{N,Char}}; guesstype::Symbol=:expected, hardmode::Bool=true
+    pool::Vector{NTuple{N,Char}}; guesstype=MaximizeEntropy, hardmode::Bool=true
 ) where {N}
     return GamePool(pool, pool; guesstype, hardmode)
 end
 
 function GamePool(
-    pool::AbstractVector{<:AbstractString}; guesstype::Symbol=:expected, hardmode::Bool=true
+    pool::AbstractVector{<:AbstractString}; guesstype=MaximizeEntropy, hardmode::Bool=true
 )
     N = length(first(pool))
     if any(≠(N) ∘ length, pool)
@@ -111,7 +112,7 @@ function GamePool(
     return GamePool(NTuple{N,Char}.(pool); guesstype, hardmode)
 end
 
-function GamePool(pool::AbstractVector; guesstype::Symbol=:expected, hardmode::Bool=true)
+function GamePool(pool::AbstractVector; guesstype=MaximizeEntropy, hardmode::Bool=true)
     return GamePool(string.(pool); guesstype, hardmode)
 end
 
@@ -142,33 +143,29 @@ function bincounts!(gp::GamePool, k)
 end
 
 """
-    entropybase2(probs::AbstractVector{<:AbstractFloat})
-    entropybase2(gp::GamePool)
+    entropy2(counts::AbstractVector{<:Real})
+    entropy2(gp::GamePool)
 
-Return the base-2 entropy of `probs` or `gp.probs`.  This is the entropy measured in bits.
+Return the base-2 entropy of `counts` or `gp.counts`, converted to probabilities.
 
+The result is the entropy measured in bits.
 See the [Wikipedia entry](https://en.wikipedia.org/wiki/Entropy_(information_theory))
 for the definition of entropy in information theory.
-
-`probs` is assumed to be a discrete probability distribution.  That is the conditions
-`all(0 .≤ probs .≤ 1) && sum(probs) ≈ 1` are assumed (but not checked).
 """
-function entropybase2(probs::AbstractVector{<:AbstractFloat})
-    return -sum(x -> iszero(x) ? zero(x) : x * log2(x), probs)
+function entropy2(counts::AbstractVector{<:Real})
+    countsum = sum(counts)
+    return -sum(x -> xlogx(x / countsum), counts) / log(2)
 end
 
-entropybase2(gp::GamePool) = entropybase2(gp.probs)
+entropy2(gp::GamePool) = entropy2(gp.counts)
 
 """
-    expectedpoolsize!(gp::GamePool)
+    expectedpoolsize(gp::GamePool)
 
-Update `gp.probs` from `gp.counts` and return the expected pool size.
+Return the expected pool size from `gp.counts`.
 """
-function expectedpoolsize!(gp::GamePool)
-    (; counts, probs) = gp
-    nactive = sum(counts)
-    probs .= counts ./ nactive
-    return sum(abs2, counts) / nactive
+function expectedpoolsize(gp::GamePool)
+    return sum(abs2, gp.counts) / sum(gp.counts)
 end
 
 """
@@ -188,6 +185,33 @@ function gamesummary(gp::GamePool{N}) where {N}
         expected=gp.expected,
         entropy=gp.entropy,
     )
+end
+
+function optimalguess(gp::GamePool{N,S,MaximizeEntropy}) where {N,S}
+    gind, xpctd, entrpy = 0, Inf, -Inf
+    poolsize = sum(gp.active)
+    for (k, a) in enumerate(gp.active)
+        if a
+            thisentropy = entropy2(bincounts!(gp, k))
+            if thisentropy > entrpy
+                gind, xpctd, entrpy = k, expectedpoolsize(gp), thisentropy
+            end
+        end
+    end
+    return gind, xpctd, entrpy
+end
+
+function optimalguess(gp::GamePool{N,S,MinimizeExpected}) where {N,S}
+    gind, xpctd, entrpy = 0, Inf, -Inf
+    for (k, a) in enumerate(gp.active)
+        if a
+            thisexpected = expectedpoolsize(bincounts!(gp, k))
+            if thisexpected < xpctd
+                gind, xpctd, entrpy = k, thisexpected, entropy2(gp)
+            end
+        end
+    end
+    return gind, xpctd, entrpy
 end
 
 """
@@ -367,38 +391,15 @@ end
 """
     updateguess!(gp::GamePool)
 
-Choose the optimal guess according to `gp.guesstype` and push! new values onto `gp.guesses`,
+Choose the optimal guess the `GuessType` of `gp` and push! new values onto `gp.guesses`,
 `gp.guessinds`, `gp.expected` and `gp.entropy`
 """
 function updateguess!(gp::GamePool)
-    (; active, counts, probs, guesstype) = gp
-    gind, xpctd, entrpy = 0, Inf, -Inf
-    if guesstype == :expected
-        for (k, a) in enumerate(active)
-            if a
-                thisexpected = expectedpoolsize!(bincounts!(gp, k))
-                if thisexpected < xpctd
-                    gind, xpctd, entrpy = k, thisexpected, entropybase2(gp)
-                end
-            end
-        end
-    elseif guesstype == :entropy
-        for (k, a) in enumerate(active)
-            if a
-                thisexpected = expectedpoolsize!(bincounts!(gp, k))  # updates gp.probs
-                thisentropy = entropybase2(gp)
-                if thisentropy > entrpy
-                    gind, xpctd, entrpy = k, thisexpected, thisentropy
-                end
-            end
-        end
-    else
-        throw(error("gp.guesstype = $(gp.guesstype) should be `:expected` or `:entropy`"))
-    end
+    gind, xpctedpoolsize, entropy = optimalguess(gp)
     push!(gp.guesses, gp.guesspool[gind])
     push!(gp.guessinds, gind)
-    push!(gp.poolsizes, sum(active))
-    push!(gp.expected, xpctd)
-    push!(gp.entropy, entrpy)
+    push!(gp.poolsizes, sum(gp.active))
+    push!(gp.expected, xpctedpoolsize)
+    push!(gp.entropy, entropy)
     return gp
 end

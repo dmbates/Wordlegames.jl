@@ -1,16 +1,20 @@
 module Wordlegames
 
+using LogExpFunctions: xlogx
 using PrettyTables: pretty_table
 using Random
 using ThreadsX
 
 include("play.jl")
 
-export GamePool,
+export 
+    GamePool,
+    MinimizeExpected,
+    MaximizeEntropy,
     Random,
     bincounts!,
-    entropybase2,
-    expectedpoolsize!,
+    entropy2,
+    expectedpoolsize,
     gamesummary,
     playgame!,
     pretty_table,
