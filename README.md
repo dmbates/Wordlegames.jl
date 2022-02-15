@@ -345,7 +345,7 @@ julia> sum(abs2, wordle.counts) / sum(wordle.counts)  # abs2(x) returns x * x
 
 The next guess is chosen to minimize the expected pool size.
 
-### MAximizing entropy
+### Maximizing entropy
 
 An alternative criterion is to maximize the [entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory)) of the probabilities associated with the possible scores, i.e. the `probs` field.
 
