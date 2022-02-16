@@ -181,7 +181,7 @@ Return the expected pool size from `gp.counts`.
 function expectedpoolsize(gp::GamePool)
     return sum(abs2, gp.counts) / sum(gp.counts)
 end
-
+    
 """
     optimalguess(gp::GamePool{N,S,G}) where {N,S,G}
 
@@ -356,6 +356,17 @@ function scoreupdate!(gp::GamePool{N}, score::Vector{<:Integer}) where {N}
     all(∈((0, 1, 2)), score) || throw(ArgumentError("score elements must be in [0, 1, 2]"))
     return scoreupdate!(gp, evalpoly(3, reverse(score)))
 end
+
+"""
+    showgame!(gp::GamePool[, target])
+
+Return a `Tables.ColumnTable` of `playgame!(gp, target)))`.
+"""
+function showgame!(gp::GamePool, target)
+    return columntable(playgame!(gp, target).guesses)
+end
+
+showgame!(gp::GamePool) = showgame!(gp, rand(axes(gp.active, 1)))
 
 """
 	tiles(score, ntiles)
