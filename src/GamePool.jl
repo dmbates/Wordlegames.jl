@@ -154,7 +154,11 @@ for the definition of entropy in information theory.
 """
 function entropy2(counts::AbstractVector{<:Real})
     countsum = sum(counts)
-    return -sum(x -> xlogx(x / countsum), counts) / log(2)
+    return -sum(counts) do k
+        x = k / countsum
+        xlgx = x * log(x)
+        iszero(x) ? zero(xlgx) : xlgx
+    end / log(2)
 end
 
 entropy2(gp::GamePool) = entropy2(gp.counts)
@@ -362,17 +366,6 @@ function scoreupdate!(gp::GamePool{N}, score::Vector{<:Integer}) where {N}
     all(∈((0, 1, 2)), score) || throw(ArgumentError("score elements must be in [0, 1, 2]"))
     return scoreupdate!(gp, evalpoly(3, reverse(score)))
 end
-
-"""
-    showgame!(gp::GamePool[, target])
-
-Return a `pretty_table` of the summary of `playgame!(gp, target)))`.
-"""
-function showgame!(gp::GamePool, target)
-    return pretty_table(gamesummary(playgame!(gp, target)))
-end
-
-showgame!(gp::GamePool) = showgame!(gp, rand(gp.targetpool))
 
 """
 	tiles(score, ntiles)

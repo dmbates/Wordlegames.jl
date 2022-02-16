@@ -1,11 +1,9 @@
 module Wordlegames
 
-using LogExpFunctions: xlogx
-using PrettyTables: pretty_table
 using Random
 using ThreadsX
 
-include("play.jl")
+include("GamePool.jl")
 
 export 
     GamePool,

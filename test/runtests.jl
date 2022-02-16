@@ -45,10 +45,6 @@ const primelxpc = GamePool(primes5; guesstype=MinimizeExpected)
     @test_throws ArgumentError GamePool(["foo", "bar"], ["foo", "bar", "foobar"])
 end 
 
-@testset "showgame!" begin
-    @test isnothing(showgame!(primel))   # called for its side-effects
-end
-
 @testset "score" begin
     raiseS = "raise"
     raiseN = NTuple{5,Char}(raiseS)
