@@ -11,38 +11,39 @@ const primelxpc = GamePool(primes5; guesstype=MinimizeExpected)
     @test typeof(primel) == GamePool{5, UInt8, MaximizeEntropy}
     @test length(primel.active) == 8363
     @test eltype(primel.allscores) == UInt8
-    @test eltype(primel.targetpool) == eltype(primel.guesspool) == NTuple{5, Char}
-    @test length(first(primel.targetpool)) == 5
+    @test eltype(primel.guesspool) == NTuple{5, Char}
+    @test length(first(primel.guesspool)) == 5
     @test all(reset!(primel).active)
-    @test only(primel.guesses) == ('1', '2', '9', '5', '3')
-    @test only(primel.guessinds) == 313
-    @test only(primel.expected) ≈ 124.3844314241301
-    @test only(primel.entropy) ≈ 6.632274058429609
+    (; poolsz, guess, index, expected, entropy, score, sc) = only(primel.guesses)
+    @test guess == "12953"
+    @test index == 313
+    @test expected ≈ 124.3844314241301
+    @test entropy ≈ 6.632274058429609
     @test primel.hardmode
-    playgame!(primel, only(primel.guessinds))   # Got it in one!
-    @test only(primel.scores) == 0xf2
-    gs = gamesummary(primel)
-    @test isa(gs, NamedTuple)
-    @test Tables.schema(gs) == Tables.Schema(
-        (:poolsize, :guess, :expected, :entropy, :score),
-        (Int, String, Float64, Float64, String),
-    )
+    playgame!(primel, index)               # Got it in one!
+    (; poolsz, guess, index, expected, entropy, score, sc) = only(primel.guesses)
+    @test sc == 0xf2
+    @test score == "🟩🟩🟩🟩🟩"
     Random.seed!(1234321)
-    playgame!(primel)
-    @test primel.guessinds == [313, 1141, 3556]
-    playgame!(primel, "43867")
-    @test primel.guessinds == [313, 2060, 3337]
+    (; poolsz, guess, index, expected, entropy, score, sc) = columntable(playgame!(primel).guesses)
+    @test poolsz == [8363, 201, 10]
+    @test index == [313, 1141, 3556]
+    @test guess == ["12953", "21067", "46271"]
+    @test expected ≈ [124.3844314241301, 5.925373134328358, 1.2]
+    @test entropy ≈ [6.632274058429609,  5.479367512099353, 3.121928094887362]
+    @test sc == Union{Missing, Int64}[108, 112, 242]
+    (; poolsz, guess, index, expected, entropy, score, sc) = columntable(playgame!(primel, "43867").guesses)
+    @test index == [313, 2060, 3337]
             # size mismatch
     @test_throws ArgumentError playgame!(primel, "4321")
             # errors in constructor arguments
-    gp = GamePool(["foo", "bar"], ["foo", "bar", "baz"])
-    @test isa(gp, GamePool{3, UInt8})
-    @test isa(gp.allscores, Matrix{UInt8})
-    @test size(gp.allscores) == (2,3)
+    @test_throws ArgumentError GamePool(["foo", "bar"], trues(4))
+    # gp = GamePool(["foo", "bar", "boz"], BitVector([true, true, false]))
+    @test_broken isa(gp, GamePool{3, UInt8})
+    @test_broken isa(gp.allscores, Matrix{UInt8})
+    @test_broken size(gp.allscores) == (2,3)
     @test_throws ArgumentError GamePool(["foo", "bar", "foobar"])
     @test_throws ArgumentError GamePool(["foo", "bar"]; guesstype=Int)
-    @test_throws ArgumentError GamePool(["foo", "bar"]; hardmode=false)
-    @test_throws ArgumentError GamePool(["foo", "bar"], ["foo", "bar", "foobar"])
 end 
 
 @testset "score" begin
@@ -76,6 +77,6 @@ end
 end
 
 @testset "scoreupdate!" begin
-    @test last(scoreupdate!(reset!(primel), [1,0,0,1,1]).poolsizes) == 120
+    @test last(scoreupdate!(reset!(primel), [1,0,0,1,1]).guesses).poolsz == 120
     @test_throws ArgumentError scoreupdate!(primel, [3,0,0,3,3])
 end

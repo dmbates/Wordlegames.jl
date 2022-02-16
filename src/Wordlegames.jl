@@ -13,13 +13,11 @@ export
     bincounts!,
     entropy2,
     expectedpoolsize,
-    gamesummary,
+    optimalguess,
     playgame!,
-    pretty_table,
     reset!,
     score,
     scoreupdate!,
-    showgame!,
     tiles,
     updateguess!
 

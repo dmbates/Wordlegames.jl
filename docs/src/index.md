@@ -7,7 +7,6 @@ GamePool
 bincounts!
 entropy2
 expectedpoolsize
-gamesummary
 playgame!
 reset!
 score
