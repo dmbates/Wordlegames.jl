@@ -43,7 +43,7 @@ julia> showgame!(wordle, "super")
 
 The size of the initial target pool is 2315.
 The first guess, `"raise"`, will reduce the size of target pool after it has been scored.
-It is not known what the score will be but set of scores from each target can be calculated.
+It is not known what the score will be but the set of scores from each target can be calculated.
 Informally, the entropy of the distribution of scores is a measure of how uniformly they are distributed over set of the possible scores.
 Choosing the guess with the greatest entropy will likely result in a large reduction in the size of the target pool after the guess is scored.
 
