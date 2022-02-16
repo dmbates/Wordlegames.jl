@@ -1,143 +1,305 @@
-# Wordlegames
+# Wordlegames - play and analyze Wordle and related games
 
-A Julia package to play and analyze [Wordle](https://en.wikipedia.org/wiki/Wordle) and related games, such as [Primel](https://cojofra.github.io/primel/).
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://dmbates.github.io/Wordlegames.jl/stable)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://dmbates.github.io/Wordlegames.jl/dev)
+[![Build Status](https://github.com/dmbates/Wordlegames.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/dmbates/Wordlegames.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Coverage](https://codecov.io/gh/dmbates/Wordlegames.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/dmbates/Wordlegames.jl)
+[![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/invenia/BlueStyle)
+[![PkgEval](https://JuliaCI.github.io/NanosoldierReports/pkgeval_badges/E/Wordlegames.svg)](https://JuliaCI.github.io/NanosoldierReports/pkgeval_badges/report.html)
 
-A game is represented by a `GamePool` constructed from the list of possible targets
+This [Julia](https://julialang.org) package allows for playing and analyzing [Wordle](https://en.wikipedia.org/wiki/Wordle) and related games, such as [Primel](https://cojofra.github.io/primel/).
+
+A game is represented by a `GamePool` of targets, potential guesses, and some game play status information.
+By default the game is played as in the "Hard Mode" setting on the Wordle app and web site, which means that the only guesses allowed at each turn are those in the current target pool.
+As a consequence, the initial pool of potential guesses is the same as the initial target pool.
 
 ```jl
 julia> using Wordlegames
 
-julia> wordle = GamePool(collect(eachline("./data/Wordletargets.txt")))
-GamePool(["aback", "abase", "abate", "abbey", "abbot", "abhor", "abide", "abled", "abode", "abort"  …  "wryly", "yacht", "yearn", "yeast", "yield", "young", "youth", "zebra", "zesty", "zonal"], UInt8[0xf2 0xea … 0x00 0x03; 0xea 0xf2 … 0x24 0x03; … ; 0x00 0x04 … 0xf2 0xa2; 0x5a 0x5a … 0xa2 0xf2], 1535, 61.00086393088553, Bool[1, 1, 1, 1, 1, 1, 1, 1, 1, 1  …  1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [446, 169, 43, 329, 123, 25, 58, 19, 28, 125  …  0, 0, 0, 0, 0, 0, 0, 0, 0, 1], Base.RefValue{Int64}(1535), Base.RefValue{Float64}(61.00086393088553), Base.RefValue{Int64}(0))
+julia> wordle = GamePool(collect(readlines("./data/Wordletargets.txt")));
 ```
 
-The first field in this object is the pool of targets.
-The other fields are described in the documentation.
+This creates a `GamePool` from the Wordle targets, a list of 2315 5-letter English words.
+The `playgame!` and `showgame!` methods can play a Wordle game, selecting each guess according to a criterion.
+By default the guess is chosen to maximize the [entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory)) of the distribution of scores from the current target pool, as explained below.
 
-In Wordle a target is chosen from the possible targets and, at each turn, the player submits a guess and receives a score that reduces the pool of possible targets.
-In the sample game on the [Wikipedia page](https://en.wikipedia.org/wiki/Wordle) for Wordle the target is "rebus".
-To play this game we define an "oracle" function the produces the score for an arbitrary guess with this target.
-Two ways of defining an oracle are shown below.
+For example, suppose the target is `"super"`.
+It takes 6 guesses to isolate this target using this strategy.
 
 ```jl
-julia> playgame(guess -> score(guess, "rebus"), wordle) # oracle as an anonymous function
-2×4 DataFrame
- Row │ guess   score       pool_size  expected 
-     │ String  String      Int64      Float64  
-─────┼─────────────────────────────────────────
-   1 │ raise   🟩🟫🟫🟨🟨       2315   61.0009
-   2 │ rebus   🟩🟩🟩🟩🟩          2    1.0
+julia> showgame!(wordle, "super")
+┌──────────┬────────┬──────────┬──────────┬────────────┐
+│ poolsize │  guess │ expected │  entropy │      score │
+│    Int64 │ String │  Float64 │  Float64 │     String │
+├──────────┼────────┼──────────┼──────────┼────────────┤
+│     2315 │  raise │  61.0009 │  5.87791 │ 🟨🟫🟫🟨🟨 │
+│       18 │  shrew │  2.66667 │  3.03856 │ 🟩🟫🟨🟩🟫 │
+│        5 │  sneer │      2.2 │  1.37095 │ 🟩🟫🟨🟩🟩 │
+│        3 │  sever │  1.66667 │ 0.918296 │ 🟩🟨🟫🟩🟩 │
+│        2 │  sober │      1.0 │      1.0 │ 🟩🟫🟫🟩🟩 │
+│        1 │  super │      1.0 │     -0.0 │ 🟩🟩🟩🟩🟩 │
+└──────────┴────────┴──────────┴──────────┴────────────┘
 ```
 
-This game ends suspiciously quickly but that doesn't always happen.
-Suppose the target was "wryly".
+The size of the initial target pool is 2315.
+The first guess, `"raise"`, will reduce the size of target pool after it has been scored.
+It is not known what the score will be but set of scores from each target can be calculated.
+Informally, the entropy of the distribution of scores is a measure of how uniformly they are distributed over set of the possible scores.
+Choosing the guess with the greatest entropy will likely result in a large reduction in the size of the target pool after the guess is scored.
+
+The expected size of the target pool, after this guess is scored, is a little over 61.
+The actual score in this game, represented as `🟨🟫🟫🟨🟨` as colored tiles or `[1,0,0,1,1]` as digits, indicates that  `r`, `s` and `e` are in the target but not in the guessed positions and `a` and `i` do not occur in the target.
+
+There are only 18 of the 2315 possible targets that would have given this score.
+Of these 18 targets the guess that will do the best job of spreading out the distribution of scores is `"shrew"`.
+The actual score for this guess is `🟩🟫🟨🟩🟫`, meaning that the `s` and `e` are in the correct positions, the `r` is in the target but not in the third position, and neither `h` nor `w` are in the target.
+
+The size of the target pool is reduced to 5, which is larger than the expected size of 2.67 and the game continues with other guesses and other scores until the target, `"super"` is matched.
+
+The target can be chosen at random
 
 ```jl
-julia> playgame(Base.Fix2(score, "wryly"), wordle) # oracle as a partially applied function
-4×4 DataFrame
- Row │ guess   score       pool_size  expected 
-     │ String  String      Int64      Float64  
-─────┼─────────────────────────────────────────
-   1 │ raise   🟨🟫🟫🟫🟫       2315  61.0009
-   2 │ truly   🟫🟩🟫🟩🟩        103   6.14563
-   3 │ dryly   🟫🟩🟩🟩🟩          2   1.0
-   4 │ wryly   🟩🟩🟩🟩🟩          1   1.0
+julia> Random.seed!(1234321);  # initialize the random number generator
+
+julia> showgame!(wordle)
+┌──────────┬────────┬──────────┬─────────┬────────────┐
+│ poolsize │  guess │ expected │ entropy │      score │
+│    Int64 │ String │  Float64 │ Float64 │     String │
+├──────────┼────────┼──────────┼─────────┼────────────┤
+│     2315 │  raise │  61.0009 │ 5.87791 │ 🟫🟫🟫🟫🟫 │
+│      168 │  mulch │  6.85714 │ 5.21165 │ 🟫🟫🟫🟫🟨 │
+│        6 │  howdy │  1.33333 │ 2.25163 │ 🟩🟩🟫🟫🟩 │
+│        1 │  hobby │      1.0 │    -0.0 │ 🟩🟩🟩🟩🟩 │
+└──────────┴────────┴──────────┴─────────┴────────────┘
 ```
 
-The game can also be played with a randomly chosen target from the pool of possible targets.
+The target can also be specified as an integer between `1` and `length(wordle.targetpool)`.
 
 ```jl
-julia> playgame(wordle)
-3×4 DataFrame
- Row │ guess   score       pool_size  expected 
-     │ String  String      Int64      Float64  
-─────┼─────────────────────────────────────────
-   1 │ raise   🟨🟫🟨🟫🟫       2315  61.0009
-   2 │ droit   🟫🟨🟫🟨🟨         23   1.86957
-   3 │ birth   🟩🟩🟩🟩🟩          3   1.66667
+julia> showgame!(wordle, 1234)
+┌──────────┬────────┬──────────┬─────────┬────────────┐
+│ poolsize │  guess │ expected │ entropy │      score │
+│    Int64 │ String │  Float64 │ Float64 │     String │
+├──────────┼────────┼──────────┼─────────┼────────────┤
+│     2315 │  raise │  61.0009 │ 5.87791 │ 🟫🟫🟨🟫🟩 │
+│       25 │  binge │     3.64 │ 3.28386 │ 🟫🟩🟩🟫🟩 │
+│        2 │  mince │      1.0 │     1.0 │ 🟩🟩🟩🟩🟩 │
+└──────────┴────────┴──────────┴─────────┴────────────┘
 ```
 
-For the game of Primel the target pool is the 5-digit prime numbers between 10,000 and 99,999.
+This mechanism allows for playing all possible games and accumulating some statistics.
+
+```jl
+julia> nguesswordle = [length(playgame!(wordle, k).scores) for k in 1:length(wordle.targetpool)];
+
+julia> using StatsBase, UnicodePlots
+
+julia> barplot(countmap(nguesswordle))
+     ┌                                        ┐ 
+   1 ┤ 1                                        
+   2 ┤■■■■■ 131                                 
+   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 978   
+   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 928     
+   5 ┤■■■■■■■■ 217                              
+   6 ┤■■ 49                                     
+   7 ┤ 9                                        
+   8 ┤ 2                                        
+     └                                        ┘ 
+```
+
+Playing all possible Wordle games in this way takes less than half a second on a not-very-powerful laptop.
+
+```jl
+julia> versioninfo()
+Julia Version 1.8.0-DEV.1526
+Commit 635449dabe (2022-02-13 12:15 UTC)
+Platform Info:
+  OS: Linux (x86_64-linux-gnu)
+  CPU: 8 × 11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-13.0.1 (ORCJIT, tigerlake)
+  Threads: 4 on 8 virtual cores
+```
+
+The mean and standard deviation of the number of guesses for Wordle using this strategy
+
+```jl
+julia> (n̄ = mean(nguesswordle), s = std(nguesswordle)) 
+(n̄ = 3.614254859611231, s = 0.8552369532287724)
+```
+
+are reasonable but not optimal.
+Grant Sanderson has a [YouTube video](https://twitter.com/3blue1brown/status/1490351572215283712) describing a strategy the gives a mean of 3.43 guesses.
+Later, in a tweet, he referred to a strategy with a mean of 3.42 guesses.
+
+Also, the barplot shows that there are 11 of the 2315 games that are not solved in 6 guesses by this strategy.
+
+The games that require 8 guesses are
+
+```jl
+julia> [showgame!(wordle, k) for k in findall(==(8), nguesswordle)];
+┌──────────┬────────┬──────────┬──────────┬────────────┐
+│ poolsize │  guess │ expected │  entropy │      score │
+│    Int64 │ String │  Float64 │  Float64 │     String │
+├──────────┼────────┼──────────┼──────────┼────────────┤
+│     2315 │  raise │  61.0009 │  5.87791 │ 🟨🟫🟫🟫🟨 │
+│      102 │  outer │  8.68627 │  4.09399 │ 🟨🟫🟫🟩🟩 │
+│       16 │  mower │    5.875 │  1.91974 │ 🟫🟩🟫🟩🟩 │
+│        9 │  cover │  3.44444 │  1.65774 │ 🟫🟩🟫🟩🟩 │
+│        5 │  joker │      2.2 │  1.37095 │ 🟫🟩🟫🟩🟩 │
+│        3 │  boxer │  1.66667 │ 0.918296 │ 🟫🟩🟫🟩🟩 │
+│        2 │  foyer │      1.0 │      1.0 │ 🟫🟩🟫🟩🟩 │
+│        1 │  goner │      1.0 │     -0.0 │ 🟩🟩🟩🟩🟩 │
+└──────────┴────────┴──────────┴──────────┴────────────┘
+┌──────────┬────────┬──────────┬──────────┬────────────┐
+│ poolsize │  guess │ expected │  entropy │      score │
+│    Int64 │ String │  Float64 │  Float64 │     String │
+├──────────┼────────┼──────────┼──────────┼────────────┤
+│     2315 │  raise │  61.0009 │  5.87791 │ 🟫🟩🟫🟫🟫 │
+│       91 │  tangy │  7.48352 │  4.03061 │ 🟨🟩🟫🟫🟫 │
+│       13 │  caput │  2.84615 │   2.4997 │ 🟨🟩🟫🟫🟨 │
+│        5 │  batch │      3.4 │ 0.721928 │ 🟫🟩🟩🟩🟩 │
+│        4 │  hatch │      2.5 │ 0.811278 │ 🟨🟩🟩🟩🟩 │
+│        3 │  latch │  1.66667 │ 0.918296 │ 🟫🟩🟩🟩🟩 │
+│        2 │  match │      1.0 │      1.0 │ 🟫🟩🟩🟩🟩 │
+│        1 │  watch │      1.0 │     -0.0 │ 🟩🟩🟩🟩🟩 │
+└──────────┴────────┴──────────┴──────────┴────────────┘
+```
+
+## Related games
+
+Wordle has spawned a huge number of [related games](https://rwmpelstilzchen.gitlab.io/wordles/).
+
+One such game is [Primel](https://converged.yt/primel/) where the targets are 5-digit prime numbers.
+The Primel game from 2022-02-15 can be played as
 
 ```jl
 julia> using Primes
 
-julia> primel = GamePool(string.(primes(10000, 99999)))
-GamePool(["10007", "10009", "10037", "10039", "10061", "10067", "10069", "10079", "10091", "10093"  …  "99877", "99881", "99901", "99907", "99923", "99929", "99961", "99971", "99989", "99991"], UInt8[0xf2 0xf0 … 0x00 0x01; 0xf0 0xf2 … 0x77 0x79; … ; 0x00 0x02 … 0xf2 0xed; 0x51 0x52 … 0xeb 0xf2], 826, 121.5416716489298, Bool[1, 1, 1, 1, 1, 1, 1, 1, 1, 1  …  1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1631, 1087, 1361, 0, 0, 0, 0, 0, 0, 0  …  2, 0, 0, 0, 4, 0, 3, 0, 0, 1], Base.RefValue{Int64}(826), Base.RefValue{Float64}(121.5416716489298), Base.RefValue{Int64}(0))
+julia> primel = GamePool(primes(10000, 99999));
 
-julia> playgame(primel)
-3×4 DataFrame
- Row │ guess   score       pool_size  expected  
-     │ String  String      Int64      Float64   
-─────┼──────────────────────────────────────────
-   1 │ 17923   🟨🟫🟨🟨🟨       8363  121.542
-   2 │ 95231   🟨🟩🟨🟨🟩         45    3.48889
-   3 │ 25391   🟩🟩🟩🟩🟩          1    1.0
+julia> last(primel.guesses)   # What is the current best guess?
+('1', '2', '9', '5', '3')
+
+julia> last(scoreupdate!(primel, [1,0,0,0,1]).guesses) # scoreupdate! records the score for the last guess
+('3', '6', '1', '8', '7')
+
+julia> last(scoreupdate!(primel, [2,2,1,0,0]).guesses)
+('3', '6', '0', '1', '1')
+
+julia> pretty_table(gamesummary(scoreupdate!(primel, [2,2,2,2,2])))
+┌──────────┬────────┬──────────┬─────────┬────────────┐
+│ poolsize │  guess │ expected │ entropy │      score │
+│    Int64 │ String │  Float64 │ Float64 │     String │
+├──────────┼────────┼──────────┼─────────┼────────────┤
+│     8363 │  12953 │  124.384 │ 6.63227 │ 🟨🟫🟫🟫🟨 │
+│      236 │  36187 │  6.30508 │ 5.57465 │ 🟩🟩🟨🟫🟫 │
+│        3 │  36011 │      1.0 │ 1.58496 │ 🟩🟩🟩🟩🟩 │
+└──────────┴────────┴──────────┴─────────┴────────────┘
+```
+
+Because there are more targets initially in Primel than in Wordle, the mean number of guesses is greater but the standard deviation is smaller, perhaps because the number of possible characters at each position (10) is smaller than for Wordle (26).
+
+```jl
+julia> nguessprimel = [length(playgame!(primel, k).guesses) for k in axes(primel.active, 1)];
+
+julia> barplot(countmap(nguessprimel))
+     ┌                                        ┐ 
+   1 ┤ 1                                        
+   2 ┤■■ 215                                    
+   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■ 3070             
+   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 4363   
+   5 ┤■■■■■ 684                                 
+   6 ┤ 30                                       
+     └                                        ┘ 
+
+julia> (n̄ = mean(nguessprimel), s = std(nguessprimel))
+(n̄ = 3.6700944637091952, s = 0.6770215085958287)
 ```
 
 ## Strategy
 
-Each guess produced by a `GamePool` object must be in the current target pool, which is what the "Hard Mode" setting on the web sites or apps for such games require.
-Updating the `GamePool` with the score from the guess reduces the size of the target pool, as can be seen in the sample games.
+Each turn in a Wordle-like game can be regarded as submitting a guess to an "oracle" which returns a score that is used to update the information on the play.
+Initially the target can be any element of the target pool.
+Each guess/score combination reduces the size of the target pool, as shown in the game summaries above.
+(In a `GamePool` object the `targetpool` field remains constant and the `active` field, a `BitVector` of the same length as the `targetpool`, is used to keep track of which targets are in the current target pool.)
 
-In the Primel game with target 25391 the initial target pool size is 8363.
-The first guess, 17923, produces a score of 🟨🟫🟨🟨🟨, which could be written as the base-3 integer 10111, or 94 as a decimal number.
+The size of the current target pool is the sum of `active`.
+
+The score for a particular guess is known to the oracle but not to the player.
+However, the scores for any potential guess and a member of the target pool can be evaluated.
+The number of possible scores is finite (`3^N` where `N` is the number of tiles in the score).
+
+For example the first guess chosen in the Wordle games shown about is `"raise"`, which is at position 1535 in `wordle.targetpool`. 
 
 ```jl
-julia> evalpoly(3, reverse([1,0,1,1,1])) # evalpoly uses little-endian order of coefficients
-94
+julia> reset!(wordle);  # reset the `GamePool` to its initial state
+
+julia> only(wordle.guessinds)  # check that there is exactly one guessind and return it
+1535
+
+julia> bincounts!(wordle, 1535);   # evaluate the bin counts for that guess
+
+julia> pretty_table((; score = tiles.(0:242, 5), counts = wordle.counts))
+┌────────────┬────────┐
+│      score │ counts │
+│     String │  Int64 │
+├────────────┼────────┤
+│ 🟫🟫🟫🟫🟫 │    168 │
+│ 🟫🟫🟫🟫🟨 │    121 │
+│ 🟫🟫🟫🟫🟩 │     61 │
+│ 🟫🟫🟫🟨🟫 │     80 │
+│ 🟫🟫🟫🟨🟨 │     41 │
+│ 🟫🟫🟫🟨🟩 │     17 │
+│ 🟫🟫🟫🟩🟫 │     17 │
+│ 🟫🟫🟫🟩🟨 │      9 │
+│ 🟫🟫🟫🟩🟩 │     20 │
+│ 🟫🟫🟨🟫🟫 │    107 │
+│ 🟫🟫🟨🟫🟨 │     35 │
+│ 🟫🟫🟨🟫🟩 │     25 │
+│     ⋮      │   ⋮    │
+└────────────┴────────┘
+       231 rows omitted
+
+julia> (expectedpoolsize(wordle), entropy2(wordle))
+(61.00086393088553, 5.877909690821478)
 ```
 
-The expected pool size from this guess is 121.542, before we record the score.
-The actual pool size after updating is 45.
-
-We can do this step-by-step
+Assuming the targets are equally likely, which apparently is the case in the online games, the probability of each score is the count for that score divided by the size of the active target pool.
+The expected pool size is the sum of the `counts` multiplied by the probabilities or, equivalently, the sum of the squared counts divided by the sum of the counts.
 
 ```jl
-julia> nextguess(reset!(primel))   # Reset the game to its initial state.
-"17923"
-
-julia> update!(primel, evalpoly(3, reverse([1,0,1,1,1]))) # enter score shown as 🟨🟫🟨🟨🟨
-("95231", 45, 3.488888888888889)
-
-julia> update!(primel, evalpoly(3, reverse([1,2,1,1,2]))) # enter score shown as 🟨🟩🟨🟨🟩
-("25391", 1, 1.0)
+julia> sum(abs2, wordle.counts) / sum(wordle.counts)  # abs2(x) returns x * x
+61.00086393088553
 ```
 
-For this guess the score is 🟩🟩🟩🟩🟩 or 242 in decimal so we are done.
+Measured in bits, the entropy of the probabilities is `- Σᵢ pᵢ log₂(pᵢ)`.
+Entropy measures how the probability is dispersed among the possible scores.
+The best case is for each of the `n` possible scores to have probability `1/n` of occurring.In that case, whichever score is returned, there will only be a small number of targets with that score.
+It is not possible to get uniform pool sizes from a starting guess but, sometimes when the target pool is small, a particular guess may be able to split the remaining `k` targets into `k` distinct scores.
 
-Within the `update!` method, the expected pool size for each guess left in the current target pool is evaluated.
+In particular, this always occurs when there are only two targets left.
 
-The next guess is chosen as the element of the current target pool with the minimum expected pool size.
-
-Several aspects of the implementation are chosen to make the updating operation very fast.
-
-On a modest laptop
+The guesses can be chosen to minimize the expected pool size but this strategy is not as effective as is maximizing the entropy.
 
 ```jl
-julia> versioninfo()
-Julia Version 1.8.0-DEV.1455
-Commit e0a4b7727c (2022-02-06 12:55 UTC)
-Platform Info:
-  OS: Linux (x86_64-linux-gnu)
-  CPU: 11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz
-  WORD_SIZE: 64
-  LIBM: libopenlibm
-  LLVM: libLLVM-13.0.0 (ORCJIT, tigerlake)
+julia> wrdle2 = GamePool(collect(readlines("./data/Wordletargets.txt")); guesstype=MinimizeExpected);
+
+julia> ngwrdle2 = [length(playgame!(wrdle2, k).guesses) for k in axes(wrdle2.active, 1)];
+
+julia> barplot(countmap(ngwrdle2))
+     ┌                                        ┐ 
+   1 ┤ 1                                        
+   2 ┤■■■■■ 131                                 
+   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 944   
+   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 949   
+   5 ┤■■■■■■■■■ 233                             
+   6 ┤■■ 43                                     
+   7 ┤ 11                                       
+   8 ┤ 3                                        
+     └                                        ┘ 
+
+julia> (n̄ = mean(ngwrdle2), s = std(ngwrdle2))
+(n̄ = 3.634989200863931, s = 0.8622912420643568)
 ```
-
-benchmarking play of a random Wordle game produces
-
-```jl
-julia> @benchmark playgame($wordle)
-BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):   3.410 μs …  7.382 ms  ┊ GC (min … max): 0.00% … 98.92%
- Time  (median):     70.059 μs              ┊ GC (median):    0.00%
- Time  (mean ± σ):   85.787 μs ± 89.935 μs  ┊ GC (mean ± σ):  0.85% ±  0.99%
-
-      ▂▁▂▃▄▇▇▇▃█▂▆ ▁        ▁      ▂▂▂▁                        
-  ▁▅▆▅████████████▇█▆▄▄▄▄▆▅▇█▆▇▇▇▆▇████▇▇▇▆▆▅▄▂▂▁▁▁▂▁▃▃▃▄▄▄▃▃ ▄
-  3.41 μs         Histogram: frequency by time         211 μs <
-
- Memory estimate: 3.07 KiB, allocs estimate: 50.
- ```

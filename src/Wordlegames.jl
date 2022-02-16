@@ -1,20 +1,28 @@
 module Wordlegames
 
-using DataFrames
-using Primes
+using LogExpFunctions: xlogx
+using PrettyTables: pretty_table
 using Random
+using ThreadsX
 
-include("utilities.jl")
 include("play.jl")
 
-export
+export 
     GamePool,
+    MinimizeExpected,
+    MaximizeEntropy,
+    Random,
     bincounts!,
-    nextguess,
-    playgame,
+    entropy2,
+    expectedpoolsize,
+    gamesummary,
+    playgame!,
+    pretty_table,
     reset!,
     score,
+    scoreupdate!,
+    showgame!,
     tiles,
-    update!
+    updateguess!
 
 end
