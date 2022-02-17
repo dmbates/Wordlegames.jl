@@ -14,6 +14,7 @@ const primelxpc = GamePool(primes5; guesstype=MinimizeExpected)
     @test eltype(primel.allscores) == UInt8
     @test eltype(primel.guesspool) == NTuple{5, Char}
     @test length(first(primel.guesspool)) == 5
+    @test length(names(primel.summary)) == 7
     @test all(reset!(primel).active)
     (; poolsz, guess, index, expected, entropy, score, sc) = only(primel.guesses)
     @test guess == "12953"

@@ -167,7 +167,7 @@ end
 
 function Base.getproperty(gp::GamePool, s::Symbol)
     if s == :summary
-        return disallowmissing!(DataFrame(gp.guesses))
+        return disallowmissing!(DataFrame(gp.guesses); error=false)
     else
         return getfield(gp, s)
     end
@@ -260,8 +260,12 @@ Return `gp` with its `active`, `guess`, and `entropy` fields reset to initial va
 """
 function reset!(gp::GamePool)
     (; active, guesses) = gp
-    fill!(active, true)
-    deleteat!(guesses, 2:length(guesses))
+    (; poolsz, index, guess, expected, entropy, score, sc) = first(guesses)
+    fill!(active, true)   # may need to change this if !all(gp.validtargets)
+    push!(
+        empty!(guesses),
+        (; poolsz, index, guess, expected, entropy, score = missing, sc = missing),
+    )
     return gp
 end
 
@@ -358,7 +362,7 @@ end
 Return a `Tables.ColumnTable` of `playgame!(gp, target)))`.
 """
 function showgame!(gp::GamePool, target)
-    return disallowmissing!(DataFrame(playgame!(gp, target).guesses))
+    return disallowmissing!(DataFrame(playgame!(gp, target).guesses); error=false)
 end
 
 showgame!(gp::GamePool) = showgame!(gp, rand(axes(gp.active, 1)))
