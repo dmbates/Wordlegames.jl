@@ -14,7 +14,7 @@ By default the game is played as in the "Hard Mode" setting on the Wordle app an
 As a consequence, the initial pool of potential guesses is the same as the initial target pool.
 
 ```jl
-julia> using DataFrames, Wordlegames
+julia> using Wordlegames
 
 julia> wordle = GamePool(collect(readlines("./data/Wordletargets.txt")));
 ```
@@ -27,17 +27,17 @@ For example, suppose the target is `"super"`.
 It takes 6 guesses to isolate this target using this strategy.
 
 ```jl
-julia> DataFrame(showgame!(wordle, "super"))
+julia> showgame!(wordle, "super")
 6×7 DataFrame
- Row │ poolsz  index  guess   expected  entropy    score       sc     
-     │ Int64   Int64  String  Float64   Float64    String?     Int64? 
-─────┼────────────────────────────────────────────────────────────────
-   1 │   2315   1535  raise   61.0009    5.87791   🟨🟫🟫🟨🟨      85
-   2 │     18   1744  shrew    2.66667   3.03856   🟩🟫🟨🟩🟫     177
-   3 │      5   1823  sneer    2.2       1.37095   🟩🟫🟨🟩🟩     179
-   4 │      3   1697  sever    1.66667   0.918296  🟩🟨🟫🟩🟩     197
-   5 │      2   1835  sober    1.0       1.0       🟩🟫🟫🟩🟩     170
-   6 │      1   1969  super    1.0      -0.0       🟩🟩🟩🟩🟩     242
+ Row │ poolsz  index  guess   expected  entropy    score       sc    
+     │ Int64   Int64  String  Float64   Float64    String      Int64 
+─────┼───────────────────────────────────────────────────────────────
+   1 │   2315   1535  raise   61.0009    5.87791   🟨🟫🟫🟨🟨     85
+   2 │     18   1744  shrew    2.66667   3.03856   🟩🟫🟨🟩🟫    177
+   3 │      5   1823  sneer    2.2       1.37095   🟩🟫🟨🟩🟩    179
+   4 │      3   1697  sever    1.66667   0.918296  🟩🟨🟫🟩🟩    197
+   5 │      2   1835  sober    1.0       1.0       🟩🟫🟫🟩🟩    170
+   6 │      1   1969  super    1.0      -0.0       🟩🟩🟩🟩🟩    242
 ```
 
 The size of the initial target pool is 2315.
@@ -48,6 +48,9 @@ Choosing the guess with the greatest entropy will likely result in a large reduc
 
 The expected size of the target pool, after this guess is scored, is a little over 61.
 The actual score in this game, represented as `🟨🟫🟫🟨🟨` as colored tiles or `[1,0,0,1,1]` as digits, indicates that  `r`, `s` and `e` are in the target but not in the guessed positions and `a` and `i` do not occur in the target.
+
+(This package uses the Unicode character `U+F7EB`, the `:large_brown_square:` emoji, `🟫`, instead of a gray square for the "didn't match" tile - using a "traffic lights" motif.
+Also, it is surprisingly difficult to get a consistent-width black or gray square symbol in many fonts.)
 
 There are only 18 of the 2315 possible targets that would have given this score.
 Of these 18 targets the guess that will do the best job of spreading out the distribution of scores is `"shrew"`.
@@ -60,28 +63,27 @@ The target can be chosen at random
 ```jl
 julia> Random.seed!(1234321);  # initialize the random number generator
 
-julia> DataFrame(showgame!(wordle))
+julia> showgame!(wordle)
 4×7 DataFrame
- Row │ poolsz  index  guess   expected  entropy   score       sc     
-     │ Int64   Int64  String  Float64   Float64   String?     Int64? 
-─────┼───────────────────────────────────────────────────────────────
-   1 │   2315   1535  raise   61.0009    5.87791  🟫🟫🟫🟫🟫       0
-   2 │    168   1275  mulch    6.85714   5.21165  🟫🟫🟫🟫🟨       1
-   3 │      6   1000  howdy    1.33333   2.25163  🟩🟩🟫🟫🟩     218
-   4 │      1    985  hobby    1.0      -0.0      🟩🟩🟩🟩🟩     242
+ Row │ poolsz  index  guess   expected  entropy   score       sc    
+     │ Int64   Int64  String  Float64   Float64   String      Int64 
+─────┼──────────────────────────────────────────────────────────────
+   1 │   2315   1535  raise   61.0009    5.87791  🟫🟫🟫🟫🟫      0
+   2 │    168   1275  mulch    6.85714   5.21165  🟫🟫🟫🟫🟨      1
+   3 │      6   1000  howdy    1.33333   2.25163  🟩🟩🟫🟫🟩    218
+   4 │      1    985  hobby    1.0      -0.0      🟩🟩🟩🟩🟩    242
 ```
 
 The target can also be specified as an integer between `1` and `length(wordle.targetpool)`.
 
 ```jl
-julia> DataFrame(showgame!(wordle, 1234))
 3×7 DataFrame
- Row │ poolsz  index  guess   expected  entropy  score       sc     
-     │ Int64   Int64  String  Float64   Float64  String?     Int64? 
-─────┼──────────────────────────────────────────────────────────────
-   1 │   2315   1535  raise    61.0009  5.87791  🟫🟫🟨🟫🟩      11
-   2 │     25    198  binge     3.64    3.28386  🟫🟩🟩🟫🟩      74
-   3 │      2   1234  mince     1.0     1.0      🟩🟩🟩🟩🟩     242
+ Row │ poolsz  index  guess   expected  entropy  score       sc    
+     │ Int64   Int64  String  Float64   Float64  String      Int64 
+─────┼─────────────────────────────────────────────────────────────
+   1 │   2315   1535  raise    61.0009  5.87791  🟫🟫🟨🟫🟩     11
+   2 │     25    198  binge     3.64    3.28386  🟫🟩🟩🟫🟩     74
+   3 │      2   1234  mince     1.0     1.0      🟩🟩🟩🟩🟩    242
 ```
 
 This mechanism allows for playing all possible games and accumulating some statistics.
@@ -135,32 +137,32 @@ Also, the barplot shows that there are 11 of the 2315 games that are not solved 
 The games that require 8 guesses are
 
 ```jl
-julia> [DataFrame(showgame!(wordle, k)) for k in findall(==(8), nguesswordle)]
-2-element Vector{DataFrame}:
+julia> [showgame!(wordle, k) for k in findall(==(8), nguesswordle)]
+2-element Vector{DataFrames.DataFrame}:
  8×7 DataFrame
- Row │ poolsz  index  guess   expected  entropy    score       sc     
-     │ Int64   Int64  String  Float64   Float64    String?     Int64? 
-─────┼────────────────────────────────────────────────────────────────
-   1 │   2315   1535  raise   61.0009    5.87791   🟨🟫🟫🟫🟨      82
-   2 │    102   1352  outer    8.68627   4.09399   🟨🟫🟫🟩🟩      89
-   3 │     16   1271  mower    5.875     1.91974   🟫🟩🟫🟩🟩      62
-   4 │      9    451  cover    3.44444   1.65774   🟫🟩🟫🟩🟩      62
-   5 │      5   1059  joker    2.2       1.37095   🟫🟩🟫🟩🟩      62
-   6 │      3    258  boxer    1.66667   0.918296  🟫🟩🟫🟩🟩      62
-   7 │      2    800  foyer    1.0       1.0       🟫🟩🟫🟩🟩      62
-   8 │      1    884  goner    1.0      -0.0       🟩🟩🟩🟩🟩     242
+ Row │ poolsz  index  guess   expected  entropy    score       sc    
+     │ Int64   Int64  String  Float64   Float64    String      Int64 
+─────┼───────────────────────────────────────────────────────────────
+   1 │   2315   1535  raise   61.0009    5.87791   🟨🟫🟫🟫🟨     82
+   2 │    102   1352  outer    8.68627   4.09399   🟨🟫🟫🟩🟩     89
+   3 │     16   1271  mower    5.875     1.91974   🟫🟩🟫🟩🟩     62
+   4 │      9    451  cover    3.44444   1.65774   🟫🟩🟫🟩🟩     62
+   5 │      5   1059  joker    2.2       1.37095   🟫🟩🟫🟩🟩     62
+   6 │      3    258  boxer    1.66667   0.918296  🟫🟩🟫🟩🟩     62
+   7 │      2    800  foyer    1.0       1.0       🟫🟩🟫🟩🟩     62
+   8 │      1    884  goner    1.0      -0.0       🟩🟩🟩🟩🟩    242
  8×7 DataFrame
- Row │ poolsz  index  guess   expected  entropy    score       sc     
-     │ Int64   Int64  String  Float64   Float64    String?     Int64? 
-─────┼────────────────────────────────────────────────────────────────
-   1 │   2315   1535  raise   61.0009    5.87791   🟫🟩🟫🟫🟫      54
-   2 │     91   2012  tangy    7.48352   4.03061   🟨🟩🟫🟫🟫     135
-   3 │     13    334  caput    2.84615   2.4997    🟨🟩🟫🟫🟨     136
-   4 │      5    160  batch    3.4       0.721928  🟫🟩🟩🟩🟩      80
-   5 │      4    959  hatch    2.5       0.811278  🟨🟩🟩🟩🟩     161
-   6 │      3   1102  latch    1.66667   0.918296  🟫🟩🟩🟩🟩      80
-   7 │      2   1206  match    1.0       1.0       🟫🟩🟩🟩🟩      80
-   8 │      1   2233  watch    1.0      -0.0       🟩🟩🟩🟩🟩     242
+ Row │ poolsz  index  guess   expected  entropy    score       sc    
+     │ Int64   Int64  String  Float64   Float64    String      Int64 
+─────┼───────────────────────────────────────────────────────────────
+   1 │   2315   1535  raise   61.0009    5.87791   🟫🟩🟫🟫🟫     54
+   2 │     91   2012  tangy    7.48352   4.03061   🟨🟩🟫🟫🟫    135
+   3 │     13    334  caput    2.84615   2.4997    🟨🟩🟫🟫🟨    136
+   4 │      5    160  batch    3.4       0.721928  🟫🟩🟩🟩🟩     80
+   5 │      4    959  hatch    2.5       0.811278  🟨🟩🟩🟩🟩    161
+   6 │      3   1102  latch    1.66667   0.918296  🟫🟩🟩🟩🟩     80
+   7 │      2   1206  match    1.0       1.0       🟫🟩🟩🟩🟩     80
+   8 │      1   2233  watch    1.0      -0.0       🟩🟩🟩🟩🟩    242
 ```
 
 ## Related games
@@ -168,21 +170,22 @@ julia> [DataFrame(showgame!(wordle, k)) for k in findall(==(8), nguesswordle)]
 Wordle has spawned a huge number of [related games](https://rwmpelstilzchen.gitlab.io/wordles/).
 
 One such game is [Primel](https://converged.yt/primel/) where the targets are 5-digit prime numbers.
-The Primel game from 2022-02-15 can be played as
+The Primel game from 2022-02-15 can be played by entering the scores after each guess is copied onto the game-play page.
+The `summary` property of a `GamePool` shows the guesses and scores to this point and the next guess to use.
 
 ```jl
 julia> using Primes
 
 julia> primel = GamePool(primes(10000, 99999));
 
-julia> DataFrame(primel.guesses)
+julia> primel.summary
 1×7 DataFrame
  Row │ poolsz  index  guess   expected  entropy  score    sc      
      │ Int64   Int64  String  Float64   Float64  String?  Int64?  
 ─────┼────────────────────────────────────────────────────────────
    1 │   8363    313  12953    124.384  6.63227  missing  missing 
 
-julia> DataFrame(scoreupdate!(primel, [1,0,0,0,1]).guesses)
+julia> scoreupdate!(primel, [1,0,0,0,1]).summary
 2×7 DataFrame
  Row │ poolsz  index  guess   expected   entropy  score       sc      
      │ Int64   Int64  String  Float64    Float64  String?     Int64?  
@@ -190,7 +193,7 @@ julia> DataFrame(scoreupdate!(primel, [1,0,0,0,1]).guesses)
    1 │   8363    313  12953   124.384    6.63227  🟨🟫🟫🟫🟨       82
    2 │    236   2612  36187     6.30508  5.57465  missing     missing 
 
-julia> DataFrame(scoreupdate!(primel, [2,2,1,0,0]).guesses)
+julia> scoreupdate!(primel, [2,2,1,0,0]).summary
 3×7 DataFrame
  Row │ poolsz  index  guess   expected   entropy  score       sc      
      │ Int64   Int64  String  Float64    Float64  String?     Int64?  
@@ -199,14 +202,14 @@ julia> DataFrame(scoreupdate!(primel, [2,2,1,0,0]).guesses)
    2 │    236   2612  36187     6.30508  5.57465  🟩🟩🟨🟫🟫      225
    3 │      3   2597  36011     1.0      1.58496  missing     missing 
 
-julia> DataFrame(scoreupdate!(primel, [2,2,2,2,2]).guesses)
+julia> scoreupdate!(primel, [2,2,2,2,2]).summary
 3×7 DataFrame
- Row │ poolsz  index  guess   expected   entropy  score       sc     
-     │ Int64   Int64  String  Float64    Float64  String?     Int64? 
-─────┼───────────────────────────────────────────────────────────────
-   1 │   8363    313  12953   124.384    6.63227  🟨🟫🟫🟫🟨      82
-   2 │    236   2612  36187     6.30508  5.57465  🟩🟩🟨🟫🟫     225
-   3 │      3   2597  36011     1.0      1.58496  🟩🟩🟩🟩🟩     242
+ Row │ poolsz  index  guess   expected   entropy  score       sc    
+     │ Int64   Int64  String  Float64    Float64  String      Int64 
+─────┼──────────────────────────────────────────────────────────────
+   1 │   8363    313  12953   124.384    6.63227  🟨🟫🟫🟫🟨     82
+   2 │    236   2612  36187     6.30508  5.57465  🟩🟩🟨🟫🟫    225
+   3 │      3   2597  36011     1.0      1.58496  🟩🟩🟩🟩🟩    242
 ```
 
 Because there are more targets initially in Primel than in Wordle, the mean number of guesses is greater but the standard deviation is smaller, perhaps because the number of possible characters at each position (10) is smaller than for Wordle (26).

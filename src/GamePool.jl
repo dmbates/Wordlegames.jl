@@ -80,14 +80,6 @@ function GamePool(
 end
 
 function GamePool(
-    guesspool::Vector{NTuple{N,Char}};
-    guesstype=MaximizeEntropy,
-    hardmode::Bool=true,
-) where {N}
-    return GamePool(guesspool, trues(length(guesspool)); guesstype, hardmode)
-end
-
-function GamePool(
     guesspool::AbstractVector{<:AbstractString},
     validtargets::BitVector;
     guesstype=MaximizeEntropy,
@@ -98,14 +90,6 @@ function GamePool(
         throw(ArgumentError("`guesspool` elements must have the same length"))
     end
     return GamePool(NTuple{N,Char}.(guesspool), validtargets; guesstype, hardmode)
-end
-
-function GamePool(
-    guesspool::AbstractVector{<:AbstractString};
-    guesstype=MaximizeEntropy,
-    hardmode::Bool=true,
-)
-    return GamePool(guesspool, trues(length(guesspool)); guesstype, hardmode)
 end
 
 function GamePool(
@@ -122,8 +106,7 @@ function GamePool(
     guesstype=MaximizeEntropy,
     hardmode::Bool=true,
 )
-    gps = string.(guesspool)
-    return GamePool(gps, trues(length(gps)); guesstype, hardmode)
+    return GamePool(guesspool, trues(length(guesspool)); guesstype, hardmode)
 end
 
 """
@@ -181,7 +164,15 @@ Return the expected pool size from `gp.counts`.
 function expectedpoolsize(gp::GamePool)
     return sum(abs2, gp.counts) / sum(gp.counts)
 end
-    
+
+function Base.getproperty(gp::GamePool, s::Symbol)
+    if s == :summary
+        return disallowmissing!(DataFrame(gp.guesses))
+    else
+        return getfield(gp, s)
+    end
+end
+
 """
     optimalguess(gp::GamePool{N,S,G}) where {N,S,G}
 
@@ -256,6 +247,10 @@ function playgame!(gp::GamePool{N}, target::AbstractString) where {N}
         throw(ArgumentError("`length(target) = $tlen` must be $N for this `GamePool`"))
     end
     return playgame!(gp, NTuple{N,Char}(target))
+end
+
+function Base.propertynames(gp::GamePool, private::Bool=false)
+    return (fieldnames(typeof(gp))..., :summary)
 end
 
 """
@@ -363,7 +358,7 @@ end
 Return a `Tables.ColumnTable` of `playgame!(gp, target)))`.
 """
 function showgame!(gp::GamePool, target)
-    return columntable(playgame!(gp, target).guesses)
+    return disallowmissing!(DataFrame(playgame!(gp, target).guesses))
 end
 
 showgame!(gp::GamePool) = showgame!(gp, rand(axes(gp.active, 1)))
@@ -385,8 +380,7 @@ end
 """
     updateguess!(gp::GamePool)
 
-Choose the optimal guess the `GuessType` of `gp` and push! new values onto `gp.guesses`,
-`gp.guessinds`, `gp.expected` and `gp.entropy`
+Choose the optimal guess the `GuessType` of `gp` and push! a new tuple onto `gp.guesses`.
 """
 function updateguess!(gp::GamePool)
     gind, xpctedpoolsize, entropy = optimalguess(gp)

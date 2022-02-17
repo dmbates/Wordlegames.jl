@@ -1,5 +1,6 @@
 module Wordlegames
 
+using DataFrames
 using Random
 using Tables
 using ThreadsX
