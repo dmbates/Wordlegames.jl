@@ -2,7 +2,6 @@ module Wordlegames
 
 using DataFrames
 using Random
-using Tables
 using ThreadsX
 
 include("GamePool.jl")
@@ -14,7 +13,6 @@ export
     Random,
     Tables,
     bincounts!,
-    columntable,
     entropy2,
     expectedpoolsize,
     optimalguess,

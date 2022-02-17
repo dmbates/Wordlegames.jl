@@ -7,6 +7,7 @@ GamePool
 bincounts!
 entropy2
 expectedpoolsize
+optimalguess
 playgame!
 reset!
 score
