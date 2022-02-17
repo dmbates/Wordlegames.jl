@@ -6,8 +6,7 @@ using ThreadsX
 
 include("GamePool.jl")
 
-export 
-    GamePool,
+export GamePool,
     MinimizeExpected,
     MaximizeEntropy,
     Random,

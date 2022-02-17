@@ -8,11 +8,11 @@ const primel = GamePool(primes5)
 const primelxpc = GamePool(primes5; guesstype=MinimizeExpected)
 
 @testset "GamePool" begin
-    @test typeof(primel) == GamePool{5, UInt8, MaximizeEntropy}
+    @test typeof(primel) == GamePool{5,UInt8,MaximizeEntropy}
     @test isa(propertynames(primel), Tuple)
     @test length(primel.active) == 8363
     @test eltype(primel.allscores) == UInt8
-    @test eltype(primel.guesspool) == NTuple{5, Char}
+    @test eltype(primel.guesspool) == NTuple{5,Char}
     @test length(first(primel.guesspool)) == 5
     @test length(names(primel.summary)) == 7
     @test all(reset!(primel).active)
@@ -34,29 +34,28 @@ const primelxpc = GamePool(primes5; guesstype=MinimizeExpected)
     @test index == [313, 1141, 3556]
     @test guess == ["12953", "21067", "46271"]
     @test expected ≈ [124.3844314241301, 5.925373134328358, 1.2]
-    @test entropy ≈ [6.632274058429609,  5.479367512099353, 3.121928094887362]
+    @test entropy ≈ [6.632274058429609, 5.479367512099353, 3.121928094887362]
     @test sc == [108, 112, 242]
     (; poolsz, guess, index, expected, entropy, score, sc) = showgame!(primel, "43867")
     @test index == [313, 2060, 3337]
-            # size mismatch
+    # size mismatch
     @test_throws ArgumentError playgame!(primel, "4321")
-            # errors in constructor arguments
+    # errors in constructor arguments
     @test_throws ArgumentError GamePool(["foo", "bar"], trues(4))
     # gp = GamePool(["foo", "bar", "boz"], BitVector([true, true, false]))
-    @test_broken isa(gp, GamePool{3, UInt8})
+    @test_broken isa(gp, GamePool{3,UInt8})
     @test_broken isa(gp.allscores, Matrix{UInt8})
-    @test_broken size(gp.allscores) == (2,3)
+    @test_broken size(gp.allscores) == (2, 3)
     @test_throws ArgumentError GamePool(["foo", "bar", "foobar"])
     @test_throws ArgumentError GamePool(["foo", "bar"]; guesstype=Int)
     @test Tables.isrowtable(playgame!(primel).guesses)  # this also covers the playgame! method for testing
-end 
+end
 
 @testset "score" begin
     raiseS = "raise"
     raiseN = NTuple{5,Char}(raiseS)
     superS = "super"
     superN = NTuple{5,Char}(superS)
-
 
     @test score(raiseS, raiseS) == 242
     @test score(raiseN, raiseN) == 242
@@ -82,6 +81,6 @@ end
 end
 
 @testset "scoreupdate!" begin
-    @test last(scoreupdate!(reset!(primel), [1,0,0,1,1]).guesses).poolsz == 120
-    @test_throws ArgumentError scoreupdate!(primel, [3,0,0,3,3])
+    @test last(scoreupdate!(reset!(primel), [1, 0, 0, 1, 1]).guesses).poolsz == 120
+    @test_throws ArgumentError scoreupdate!(primel, [3, 0, 0, 3, 3])
 end

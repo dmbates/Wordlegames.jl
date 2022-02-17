@@ -101,11 +101,7 @@ function GamePool(
     return GamePool(string.(guesspool), validtargets; guesstype, hardmode)
 end
 
-function GamePool(
-    guesspool::AbstractVector;
-    guesstype=MaximizeEntropy,
-    hardmode::Bool=true,
-)
+function GamePool(guesspool::AbstractVector; guesstype=MaximizeEntropy, hardmode::Bool=true)
     return GamePool(guesspool, trues(length(guesspool)); guesstype, hardmode)
 end
 
@@ -264,7 +260,7 @@ function reset!(gp::GamePool)
     fill!(active, true)   # may need to change this if !all(gp.validtargets)
     push!(
         empty!(guesses),
-        (; poolsz, index, guess, expected, entropy, score = missing, sc = missing),
+        (; poolsz, index, guess, expected, entropy, score=missing, sc=missing),
     )
     return gp
 end
