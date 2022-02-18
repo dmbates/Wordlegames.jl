@@ -9,7 +9,7 @@
 
 This [Julia](https://julialang.org) package allows for playing and analyzing [Wordle](https://en.wikipedia.org/wiki/Wordle) and related games, such as [Primel](https://cojofra.github.io/primel/).
 
-A game is represented by a `GamePool` of targets, potential guesses, and some game play status information.
+A game is represented by a `GamePool` object containing potential guesses, a subset of which are valid targets, and some game play status information.
 By default the game is played as in the "Hard Mode" setting on the Wordle app and web site, which means that the only guesses allowed at each turn are those in the current target pool.
 As a consequence, the initial pool of potential guesses is the same as the initial target pool.
 
