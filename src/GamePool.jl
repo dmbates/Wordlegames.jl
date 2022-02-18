@@ -26,7 +26,7 @@ The fields are:
 - `guesspool`: a `Vector{NTuple{N,Char}}` of potential guesses
 - `validtargets`: a `BitVector` of valid targets in the `guesspool`
 - `allscores`: a cache of pre-computed scores as a `Matrix{S}` of size `(sum(validtargets), length(guesspool))`
-- `active`: a `BitVector`. The active pool of guesses is `guesspool[active]`.
+- `active`: a `BitVector`. The active pool of targets is `guesspool[active]`.
 - `counts`: `Vector{Int}` of length `3 ^ N` in which bin counts are accumulated
 - `guesses`: `Vector{GuessScore}` recording game play
 - `hardmode`: `Bool` - should the game be played in "Hard Mode"?
@@ -164,6 +164,10 @@ end
 function Base.getproperty(gp::GamePool, s::Symbol)
     if s == :summary
         return disallowmissing!(DataFrame(gp.guesses); error=false)
+    elseif s == :targetpool
+        return gp.guesspool[gp.validtargets]
+    elseif s == :activetargets
+        return gp.active .& gp.validtargets
     else
         return getfield(gp, s)
     end
@@ -246,7 +250,7 @@ function playgame!(gp::GamePool{N}, target::AbstractString) where {N}
 end
 
 function Base.propertynames(gp::GamePool, private::Bool=false)
-    return (fieldnames(typeof(gp))..., :summary)
+    return (fieldnames(typeof(gp))..., :summary, :targetpool, :activetargets)
 end
 
 """

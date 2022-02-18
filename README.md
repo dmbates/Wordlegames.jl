@@ -42,23 +42,24 @@ julia> showgame!(wordle, "super")
 
 The size of the initial target pool is 2315.
 The first guess, `"raise"`, will reduce the size of target pool after it has been scored.
-It is not known what the score will be but the set of scores from each target can be calculated.
-Informally, the entropy of the distribution of scores is a measure of how uniformly they are distributed over set of the possible scores.
+It is not known what the score will be but the set of scores from all possible targets can be calculated.
+Assuming the possible targets are equally likely, this gives a distribution of scores, and also a distribution of pool sizes after the guess is scored.
+Informally, the entropy of the distribution of scores is a measure of how uniformly they are distributed over the set of the possible scores.
 Choosing the guess with the greatest entropy will likely result in a large reduction in the size of the target pool after the guess is scored.
 
 The expected size of the target pool, after this guess is scored, is a little over 61.
 The actual score in this game, represented as 🟨🟫🟫🟨🟨 in colored tiles or `[1,0,0,1,1]` as digits, indicates that  `r`, `s` and `e` are in the target but not in the guessed positions and `a` and `i` do not occur in the target.
 
 (This package uses the Unicode character `U+F7EB`, the `:large_brown_square:` emoji, 🟫, instead of a gray square for the "didn't match" tile - a kind of "traffic lights" motif.
-Also, it is surprisingly difficult to get a consistent-width black or gray square symbol in many fonts.)
+But the real reason for this choice is that it is surprisingly difficult to get a consistent-width black or gray square symbol in many fonts.)
 
 There are only 18 of the 2315 possible targets that would have given this score.
 Of these 18 targets the guess that will do the best job of spreading out the distribution of scores is `"shrew"`.
 The actual score for this guess is 🟩🟫🟨🟩🟫, meaning that the `s` and `e` are in the correct positions, the `r` is in the target but not in the third position, and neither `h` nor `w` are in the target.
 
-The size of the target pool is reduced to 5, which is larger than the expected size of 2.67 and the game continues with other guesses and other scores until the target, `"super"` is matched.
+The size of the target pool is reduced to 5, which is larger than the expected size of 2.67, and the game continues with other guesses and other scores until the target, `"super"` is matched.
 
-The target can be chosen at random
+If no target is specified in a call to `showgame!` or `playgame!` one is chosen at random from the set of possible targets.
 
 ```jl
 julia> Random.seed!(1234321);  # initialize the random number generator
@@ -87,7 +88,7 @@ julia> showgame!(wordle, 1234)
    3 │      2   1234  mince     1.0     1.0      🟩🟩🟩🟩🟩    242
 ```
 
-This mechanism allows for playing all possible games and accumulating some statistics.
+This mechanism allows for playing all of the 2315 possible games and accumulating some statistics.
 
 ```jl
 julia> nguesswordle = [length(playgame!(wordle, k).guesses) for k in axes(wordle.guesspool, 1)];
@@ -172,7 +173,7 @@ Wordle has spawned a huge number of [related games](https://rwmpelstilzchen.gitl
 
 One such game is [Primel](https://converged.yt/primel/) where the targets are 5-digit prime numbers.
 The Primel game from 2022-02-15 can be played by entering the scores after each guess is copied onto the game-play page.
-The `summary` property of a `GamePool` shows the guesses and scores to this point and the next guess to use.
+The `summary` property of a `GamePool` shows the guesses and scores to this point, and the next guess to use.
 
 ```jl
 julia> using Primes
@@ -213,7 +214,8 @@ julia> scoreupdate!(primel, [2,2,2,2,2]).summary
    3 │      3   2597  36011     1.0      1.58496  🟩🟩🟩🟩🟩    242
 ```
 
-Because there are more targets initially in Primel than in Wordle, the mean number of guesses is greater but the standard deviation is smaller, perhaps because the number of possible characters at each position (10) is smaller than for Wordle (26).
+Because there are more targets initially in Primel than in Wordle, the mean number of guesses is greater.
+However, the standard deviation of the length of Primel games played this way is smaller than that for Wordle, perhaps because the number of possible characters at each position (10) is smaller than for Wordle (26).
 
 ```jl
 julia> nguessprimel = [length(playgame!(primel, k).guesses) for k in axes(primel.active, 1)];
@@ -237,7 +239,8 @@ julia> (n̄ = mean(nguessprimel), s = std(nguessprimel))
 Each turn in a Wordle-like game can be regarded as submitting a guess to an "oracle" which returns a score that is used to update the information on the play.
 Initially the target can be any element of the target pool.
 Each guess/score combination reduces the size of the target pool, as shown in the game summaries above.
-(In a `GamePool` object the `targetpool` field remains constant and the `active` field, a `BitVector` of the same length as the `targetpool`, is used to keep track of which targets are in the current target pool.)
+(In a `GamePool` object the actual pool of potential targets and guess is not modified.
+Instead there are two `BitVector` fields, of the same length as the `guesspool` field, that are used to keep track of which guesses are in the current guess pool and which targets are in the current target pool.)
 
 The size of the current target pool is the sum of `active`.
 
@@ -250,7 +253,7 @@ For example the first guess chosen in the Wordle games shown about is `"raise"`,
 ```jl
 julia> reset!(wordle);  # reset the `GamePool` to its initial state
 
-julia> only(wordle.guesses).index  # check that there is exactly one guess and return its index
+julia> only(wordle.guesses).index  # check that there is exactly one guess and return its index in guesspool
 1535
 
 julia> bincounts!(wordle, 1535);   # evaluate the bin counts for that guess
