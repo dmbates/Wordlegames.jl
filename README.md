@@ -48,14 +48,14 @@ Informally, the entropy of the distribution of scores is a measure of how unifor
 Choosing the guess with the greatest entropy will likely result in a large reduction in the size of the target pool after the guess is scored.
 
 The expected size of the target pool, after this guess is scored, is a little over 61.
-The actual score in this game, represented as 🟨🟫🟫🟨🟨 in colored tiles or `[1,0,0,1,1]` as digits, indicates that  `r`, `s` and `e` are in the target but not in the guessed positions and `a` and `i` do not occur in the target.
+The actual score in this game, represented as `🟨🟫🟫🟨🟨` in colored tiles or `[1,0,0,1,1]` as digits, indicates that  `r`, `s` and `e` are in the target but not in the guessed positions and `a` and `i` do not occur in the target.
 
-(This package uses the Unicode character `U+F7EB`, the `:large_brown_square:` emoji, 🟫, instead of a gray square for the "didn't match" tile - a kind of "traffic lights" motif.
+(This package uses the Unicode character `U+F7EB`, the `:large_brown_square:` emoji, `🟫`, instead of a gray square for the "didn't match" tile - a kind of "traffic lights" motif.
 But the real reason for this choice is that it is surprisingly difficult to get a consistent-width black or gray square symbol in many fonts.)
 
 There are only 18 of the 2315 possible targets that would have given this score.
 Of these 18 targets the guess that will do the best job of spreading out the distribution of scores is `"shrew"`.
-The actual score for this guess is 🟩🟫🟨🟩🟫, meaning that the `s` and `e` are in the correct positions, the `r` is in the target but not in the third position, and neither `h` nor `w` are in the target.
+The actual score for this guess is `🟩🟫🟨🟩🟫`, meaning that the `s` and `e` are in the correct positions, the `r` is in the target but not in the third position, and neither `h` nor `w` are in the target.
 
 The size of the target pool is reduced to 5, which is larger than the expected size of 2.67, and the game continues with other guesses and other scores until the target, `"super"` is matched.
 
