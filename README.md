@@ -48,7 +48,7 @@ Informally, the entropy of the distribution of scores is a measure of how unifor
 Choosing the guess with the greatest entropy will likely result in a large reduction in the size of the target pool after the guess is scored.
 
 The expected size of the target pool, after this guess is scored, is a little over 61.
-The actual score in this game, represented as `🟨🟫🟫🟨🟨` in colored tiles or `[1,0,0,1,1]` as digits, indicates that  `r`, `s` and `e` are in the target but not in the guessed positions and `a` and `i` do not occur in the target.
+The actual score in this game, represented as `🟨🟫🟫🟨🟨` in colored tiles or `[1,0,0,1,1]` as digits, indicates that  `r`, `s` and `e` are in the target but not in the guessed positions and `a` and `i` do not occur in the target.  (The `sc` value in that row, 85, is the decimal value of `10011` in base-3.)
 
 (This package uses the Unicode character `U+F7EB`, the `:large_brown_square:` emoji, `🟫`, instead of a gray square for the "didn't match" tile - a kind of "traffic lights" motif.
 But the real reason for this choice is that it is surprisingly difficult to get a consistent-width black or gray square symbol in many fonts.)
