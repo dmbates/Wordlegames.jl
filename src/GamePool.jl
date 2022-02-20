@@ -223,7 +223,7 @@ function playgame!(gp::GamePool{N}, ind::Integer) where {N}
     gp.validtargets[ind] || throw(ArgumentError("ind = $ind is not a valid target index"))
     reset!(gp)
     maxscore = (3^N) - 1
-    while true     # FIXME: there should be a better way of writing this loop
+    while (sc = score(scoreupdate!(gp, sc), ind)) != maxscore)
         sc = score(gp, ind)
         scoreupdate!(gp, sc)
         sc == maxscore && break
