@@ -1,12 +1,19 @@
 module Wordlegames
 
+using AbstractTrees
 using DataFrames
 using Random
+using Tables
 using ThreadsX
 
-include("GamePool.jl")
+using AbstractTrees: print_tree
 
-export GamePool,
+include("GamePool.jl")
+include("trees.jl")
+
+export GameNode,
+    GamePool,
+    GuessScore,
     MinimizeExpected,
     MaximizeEntropy,
     Random,
@@ -16,12 +23,14 @@ export GamePool,
     expectedpoolsize,
     optimalguess,
     playgame!,
+    print_tree,
     reset!,
     rowtable,
     score,
     scoreupdate!,
     showgame!,
     tiles,
+    tree,
     updateguess!
 
 end

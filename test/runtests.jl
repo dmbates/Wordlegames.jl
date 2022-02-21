@@ -1,3 +1,4 @@
+using AbstractTrees
 using Primes
 using Tables
 using Test
@@ -85,4 +86,22 @@ end
 @testset "scoreupdate!" begin
     @test last(scoreupdate!(reset!(primel), [1, 0, 0, 1, 1]).guesses).poolsz == 120
     @test_throws ArgumentError scoreupdate!(primel, [3, 0, 0, 3, 3])
+end
+
+@testset "tree" begin
+    io = IOBuffer()
+    primetree = tree(primel)
+    print_tree(io, primetree; maxdepth=8)
+    @test length(take!(io)) > 500_000
+    rootscore = primetree.score
+    @test isa(rootscore, GuessScore)
+    @test rootscore.guess == "12953"
+    @test ismissing(rootscore.score)
+    @test ismissing(rootscore.sc)
+    randtree = tree(primel, Random.seed!(1234321), 15)
+    @test randtree.score.guess == rootscore.guess
+    tree55541 = tree(primel, ["55541"])
+    leafnode = only(collect(Leaves(tree55541)))
+    @test isempty(leafnode.children)
+    @test leafnode.score.guess == "55541"
 end

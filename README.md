@@ -337,3 +337,104 @@ julia> barplot(countmap(ngwrdle2))
 julia> (n̄ = mean(ngwrdle2), s = std(ngwrdle2))
 (n̄ = 3.634989200863931, s = 0.8622912420643568)
 ```
+
+## Game play as a tree
+
+For a deterministic strategy and a fixed `guesspool` and set of `validtargets` the possible games can be represented as a [tree](https://en.wikipedia.org/wiki/Tree_(data_structure)).
+
+For illustration, consider just a portion of the tree of Wordle games using the MaximumEntropy strategy.
+Games with targets `["super", "hobby", "mince", "goner", "watch"]` are shown above.
+They can be combined into a tree as
+
+```jl
+julia> print_tree(tree(wordle, ["super", "hobby", "mince", "goner", "watch"]), maxdepth=8)
+missing, raise, 1535, 2315, 5.87791, 61.0009
+├─ 🟫🟫🟨🟫🟩, binge, 198, 25, 3.28386, 3.64
+│  └─ 🟫🟩🟩🟫🟩, mince, 1234, 2, 1.0, 1.0
+├─ 🟫🟫🟫🟫🟫, mulch, 1275, 168, 5.21165, 6.85714
+│  └─ 🟫🟫🟫🟫🟨, howdy, 1000, 6, 2.25163, 1.33333
+│     └─ 🟩🟩🟫🟫🟩, hobby, 985, 1, -0.0, 1.0
+├─ 🟨🟫🟫🟫🟨, outer, 1352, 102, 4.09399, 8.68627
+│  └─ 🟨🟫🟫🟩🟩, mower, 1271, 16, 1.91974, 5.875
+│     └─ 🟫🟩🟫🟩🟩, cover, 451, 9, 1.65774, 3.44444
+│        └─ 🟫🟩🟫🟩🟩, joker, 1059, 5, 1.37095, 2.2
+│           └─ 🟫🟩🟫🟩🟩, boxer, 258, 3, 0.918296, 1.66667
+│              └─ 🟫🟩🟫🟩🟩, foyer, 800, 2, 1.0, 1.0
+│                 └─ 🟫🟩🟫🟩🟩, goner, 884, 1, -0.0, 1.0
+├─ 🟨🟫🟫🟨🟨, shrew, 1744, 18, 3.03856, 2.66667
+│  └─ 🟩🟫🟨🟩🟫, sneer, 1823, 5, 1.37095, 2.2
+│     └─ 🟩🟫🟨🟩🟩, sever, 1697, 3, 0.918296, 1.66667
+│        └─ 🟩🟨🟫🟩🟩, sober, 1835, 2, 1.0, 1.0
+│           └─ 🟩🟫🟫🟩🟩, super, 1969, 1, -0.0, 1.0
+└─ 🟫🟩🟫🟫🟫, tangy, 2012, 91, 4.03061, 7.48352
+   └─ 🟨🟩🟫🟫🟫, caput, 334, 13, 2.4997, 2.84615
+      └─ 🟨🟩🟫🟫🟨, batch, 160, 5, 0.721928, 3.4
+         └─ 🟫🟩🟩🟩🟩, hatch, 959, 4, 0.811278, 2.5
+            └─ 🟨🟩🟩🟩🟩, latch, 1102, 3, 0.918296, 1.66667
+               └─ 🟫🟩🟩🟩🟩, match, 1206, 2, 1.0, 1.0
+                  └─ 🟫🟩🟩🟩🟩, watch, 2233, 1, -0.0, 1.0
+```
+
+Although this is not a particularly interesting tree, it serves to illustrate some of the properties.
+The first node, called the "root" node, is the first guess in all the games.
+The guess is "raise" at index 1535 with pool size 2315, an entropy of 5.88 and an expected pool size of 61.00 after scoring.
+
+If the score for "raise" is `🟫🟫🟨🟫🟩`, the next guess will be "binge", with the characteristics shown.
+If the score is `🟫🟫🟫🟫🟫`, which is the most likely score for the first guess, the next guess is "mulch", and so on.
+
+Note that in the tree the score is associated with the guess that it will produce next, whereas in the summary of the game the score is associated with its guess.
+
+The reason that this tree is not very interesting is that it simply reproduces the game summaries, with the minor changes that the root node is common to all the games and the score tiles refer to the score that has been observed, not the score that will be observed.
+
+It is more interesting to play a random selection of games
+
+```jl
+julia> print_tree(tree(wordle, Random.seed!(1234321), 12))
+missing, raise, 1535, 2315, 5.87791, 61.0009
+├─ 🟨🟩🟩🟫🟫, dairy, 515, 4, 1.5, 1.5
+│  └─ 🟫🟩🟩🟩🟩, fairy, 699, 2, 1.0, 1.0
+│     └─ 🟫🟩🟩🟩🟩, hairy, 948, 1, -0.0, 1.0
+├─ 🟫🟫🟫🟫🟫, mulch, 1275, 168, 5.21165, 6.85714
+│  ├─ 🟫🟩🟩🟫🟫, bully, 302, 6, 1.79248, 2.0
+│  │  └─ 🟫🟩🟩🟨🟩, pulpy, 1492, 1, -0.0, 1.0
+│  ├─ 🟫🟨🟨🟨🟫, cloud, 419, 4, 2.0, 1.0
+│  │  └─ 🟩🟩🟩🟩🟫, clout, 420, 1, -0.0, 1.0
+│  └─ 🟫🟫🟫🟫🟨, howdy, 1000, 6, 2.25163, 1.33333
+│     └─ 🟩🟩🟫🟫🟩, hobby, 985, 1, -0.0, 1.0
+├─ 🟫🟫🟫🟫🟨, olden, 1333, 121, 4.94243, 5.1157
+│  └─ 🟨🟨🟫🟨🟩, felon, 714, 3, 1.58496, 1.0
+│     └─ 🟫🟩🟩🟩🟩, melon, 1220, 1, -0.0, 1.0
+├─ 🟨🟫🟫🟫🟨, outer, 1352, 102, 4.09399, 8.68627
+│  └─ 🟫🟨🟫🟨🟩, demur, 540, 3, 0.918296, 1.66667
+├─ 🟨🟩🟫🟫🟫, party, 1377, 26, 3.12276, 3.84615
+│  └─ 🟫🟩🟩🟫🟩, carry, 338, 4, 1.5, 1.5
+│     └─ 🟫🟩🟩🟩🟩, harry, 955, 2, 1.0, 1.0
+├─ 🟫🟫🟨🟫🟫, pilot, 1413, 107, 4.69342, 6.38318
+│  ├─ 🟫🟨🟫🟨🟫, comic, 435, 4, 2.0, 1.0
+│  │  └─ 🟩🟩🟫🟩🟩, conic, 439, 1, -0.0, 1.0
+│  ├─ 🟫🟩🟫🟫🟨, width, 2267, 13, 2.93121, 2.07692
+│  │  └─ 🟫🟩🟫🟩🟫, bitty, 204, 4, 1.5, 1.5
+│  │     └─ 🟫🟩🟨🟩🟩, fifty, 733, 2, 1.0, 1.0
+│  └─ 🟫🟩🟫🟫🟫, windy, 2274, 16, 3.20282, 1.875
+│     └─ 🟫🟩🟫🟫🟩, fizzy, 746, 2, 1.0, 1.0
+│        └─ 🟨🟩🟫🟫🟩, jiffy, 1056, 1, -0.0, 1.0
+├─ 🟨🟩🟫🟨🟫, satyr, 1648, 2, 1.0, 1.0
+└─ 🟨🟫🟫🟨🟫, short, 1739, 24, 3.60539, 2.25
+   └─ 🟨🟫🟨🟨🟨, torus, 2085, 1, -0.0, 1.0
+```
+
+Again, the root is "raise", which is the first guess in any game using the `MaximumEntropy` strategy, and if the first score is `🟫🟫🟫🟫🟫` then the second guess will be "mulch".
+But now in this selection of games the guess after "mulch" was "bully", "cloud" or "howdy" in different games.
+
+In other words some of the games from the 12 randomly selected targets produced some games that overlapped in both the first and second guesses.
+Also, one of the games, for the target "satyr", got the target on the second guess.
+
+A tree representation of all possible games can be written to a file as
+
+```jl
+julia> open("wordle_tree.txt", "w") do io
+           print_tree(io, tree(wordle); maxdepth=9)
+       end
+```
+
+but it may be more interesting to use some of the tools in [AbstractTrees.jl](https://github.com/JuliaCollections/AbstractTrees.jl) to explore the tree itself.
