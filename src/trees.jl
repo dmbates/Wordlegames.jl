@@ -17,7 +17,11 @@ AbstractTrees.children(gn::GameNode) = gn.children
 
 function AbstractTrees.printnode(io::IO, gn::GameNode)
     (; poolsz, guess, index, expected, entropy, score) = gn.score
-    join(IOContext(io, :compact => true), (score, guess, index, poolsz, entropy, expected), ", ")
+    return join(
+        IOContext(io, :compact => true),
+        (score, guess, index, poolsz, entropy, expected),
+        ", ",
+    )
 end
 
 """
@@ -42,7 +46,7 @@ function tree(gp::GamePool{N,S}, targetinds::AbstractVector{<:Integer}) where {N
         (; guesses) = playgame!(gp, t)
         inds = getfield.(guesses, :index)
         union!(activeinds, inds)
-        for (j,k) in enumerate(inds)
+        for (j, k) in enumerate(inds)
             indviewj = view(inds, 1:j)
             @assert get!(pathmap, k, indviewj) == indviewj  # store or verify
             if j > 1
@@ -54,7 +58,7 @@ function tree(gp::GamePool{N,S}, targetinds::AbstractVector{<:Integer}) where {N
         end
     end
     childmap = Dict(i => BitSet() for i in activeinds)
-       # If we could do a PreOrderDFS on just the childmap we could add the parent to a GameNode
+    # If we could do a PreOrderDFS on just the childmap we could add the parent to a GameNode
     # parentmap = Dict{Int, Union{Nothing,Int}}(rootindex => nothing)
     for path in getindex.(Ref(pathmap), activeinds)
         npath = length(path)
