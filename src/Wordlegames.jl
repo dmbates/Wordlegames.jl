@@ -1,28 +1,36 @@
 module Wordlegames
 
-using LogExpFunctions: xlogx
-using PrettyTables: pretty_table
+using AbstractTrees
+using DataFrames
 using Random
+using Tables
 using ThreadsX
 
-include("play.jl")
+using AbstractTrees: print_tree
 
-export 
+include("GamePool.jl")
+include("trees.jl")
+
+export GameNode,
     GamePool,
+    GuessScore,
     MinimizeExpected,
     MaximizeEntropy,
     Random,
+    Tables,
     bincounts!,
     entropy2,
     expectedpoolsize,
-    gamesummary,
+    optimalguess,
     playgame!,
-    pretty_table,
+    print_tree,
     reset!,
+    rowtable,
     score,
     scoreupdate!,
     showgame!,
     tiles,
+    tree,
     updateguess!
 
 end
