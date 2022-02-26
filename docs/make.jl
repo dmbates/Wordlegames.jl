@@ -6,7 +6,6 @@ DocMeta.setdocmeta!(Wordlegames, :DocTestSetup, :(using Wordlegames); recursive=
 makedocs(
     sitename = "Wordlegames.jl",
     authors="Douglas Bates <dmbates@gmail.com> and contributors",
-    repo="https://github.com/dmbates/Wordlegames.jl/blob/{commit}{path}#{line}",
     doctest = true,
     format = Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
