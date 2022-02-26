@@ -23,7 +23,7 @@ makedocs(
 # See "Hosting Documentation" and deploydocs() in the Documenter manual
 # for more information.
 deploydocs(;
-    repo = "github.com/dmbates/Wordlegame.jl",
+    repo = "github.com/dmbates/Wordlegames.jl",
     devbranch="main",
     push_preview=true,
 )
