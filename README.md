@@ -16,7 +16,7 @@ By default the game is played as in the "Hard Mode" setting on the Wordle app an
 As a consequence, the initial pool of potential guesses is the same as the initial target pool.
 
 ```jl
-julia> using Wordlegames
+julia> using Chain, DataFrames, Random, Wordlegames
 
 julia> wordle = GamePool(collect(readlines("./data/Wordletargets.txt")));
 ```
@@ -260,43 +260,45 @@ julia> only(wordle.guesses).index  # check that there is exactly one guess and r
 
 julia> bincounts!(wordle, 1535);   # evaluate the bin counts for that guess
 
-julia> DataFrame(score = tiles.(0:242, 5), counts = wordle.counts)
-243×2 DataFrame
+julia> @chain DataFrame(score = tiles.(0:242, 5), counts = wordle.counts) begin
+           subset(:counts => x -> x .> 0)
+           sort(:counts; rev=true)
+       end
+132×2 DataFrame
  Row │ score       counts 
      │ String      Int64  
 ─────┼────────────────────
    1 │ 🟫🟫🟫🟫🟫     168
    2 │ 🟫🟫🟫🟫🟨     121
-   3 │ 🟫🟫🟫🟫🟩      61
-   4 │ 🟫🟫🟫🟨🟫      80
-   5 │ 🟫🟫🟫🟨🟨      41
-   6 │ 🟫🟫🟫🟨🟩      17
-   7 │ 🟫🟫🟫🟩🟫      17
-   8 │ 🟫🟫🟫🟩🟨       9
-   9 │ 🟫🟫🟫🟩🟩      20
-  10 │ 🟫🟫🟨🟫🟫     107
-  11 │ 🟫🟫🟨🟫🟨      35
-  12 │ 🟫🟫🟨🟫🟩      25
-  13 │ 🟫🟫🟨🟨🟫      21
-  14 │ 🟫🟫🟨🟨🟨       4
-  15 │ 🟫🟫🟨🟨🟩       5
+   3 │ 🟫🟫🟨🟫🟫     107
+   4 │ 🟨🟫🟫🟫🟫     103
+   5 │ 🟨🟫🟫🟫🟨     102
+   6 │ 🟫🟨🟫🟫🟫      92
+   7 │ 🟫🟩🟫🟫🟫      91
+   8 │ 🟫🟫🟫🟨🟫      80
+   9 │ 🟨🟨🟫🟫🟫      78
+  10 │ 🟫🟨🟫🟫🟨      69
+  11 │ 🟫🟫🟫🟫🟩      61
+  12 │ 🟫🟫🟩🟫🟫      51
+  13 │ 🟫🟨🟫🟨🟫      43
+  14 │ 🟫🟫🟫🟨🟨      41
+  15 │ 🟫🟨🟫🟫🟩      41
   ⋮  │     ⋮         ⋮
- 229 │ 🟩🟩🟨🟨🟫       0
- 230 │ 🟩🟩🟨🟨🟨       0
- 231 │ 🟩🟩🟨🟨🟩       0
- 232 │ 🟩🟩🟨🟩🟫       0
- 233 │ 🟩🟩🟨🟩🟨       0
- 234 │ 🟩🟩🟨🟩🟩       0
- 235 │ 🟩🟩🟩🟫🟫       1
- 236 │ 🟩🟩🟩🟫🟨       0
- 237 │ 🟩🟩🟩🟫🟩       0
- 238 │ 🟩🟩🟩🟨🟫       0
- 239 │ 🟩🟩🟩🟨🟨       0
- 240 │ 🟩🟩🟩🟨🟩       0
- 241 │ 🟩🟩🟩🟩🟫       0
- 242 │ 🟩🟩🟩🟩🟨       0
- 243 │ 🟩🟩🟩🟩🟩       1
-          213 rows omitted
+ 119 │ 🟨🟨🟩🟩🟩       1
+ 120 │ 🟨🟩🟫🟩🟩       1
+ 121 │ 🟩🟫🟫🟨🟫       1
+ 122 │ 🟩🟫🟫🟩🟫       1
+ 123 │ 🟩🟫🟨🟨🟫       1
+ 124 │ 🟩🟫🟨🟩🟩       1
+ 125 │ 🟩🟫🟩🟫🟫       1
+ 126 │ 🟩🟫🟩🟫🟨       1
+ 127 │ 🟩🟨🟫🟩🟫       1
+ 128 │ 🟩🟨🟨🟫🟫       1
+ 129 │ 🟩🟩🟫🟫🟩       1
+ 130 │ 🟩🟩🟫🟨🟫       1
+ 131 │ 🟩🟩🟩🟫🟫       1
+ 132 │ 🟩🟩🟩🟩🟩       1
+          103 rows omitted
 
 julia> (expectedpoolsize(wordle), entropy2(wordle))
 (61.00086393088553, 5.877909690821478)
@@ -312,7 +314,8 @@ julia> sum(abs2, wordle.counts) / sum(wordle.counts)  # abs2(x) returns x * x
 
 Measured in bits, the entropy of the probabilities is `- Σᵢ pᵢ log₂(pᵢ)`.
 Entropy measures how the probability is dispersed among the possible scores.
-The best case is for each of the `n` possible scores to have probability `1/n` of occurring.In that case, whichever score is returned, there will only be a small number of targets with that score.
+The best case is for each of the `n` possible scores to have probability `1/n` of occurring.
+In that case, whichever score is returned, there will only be a small number of targets with that score.
 It is not possible to get uniform pool sizes from a starting guess but, sometimes when the target pool is small, a particular guess may be able to split the remaining `k` targets into `k` distinct scores.
 
 In particular, this always occurs when there are only two targets left.
