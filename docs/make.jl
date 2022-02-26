@@ -25,4 +25,5 @@ makedocs(
 deploydocs(;
     repo = "github.com/dmbates/Wordlegame.jl.git",
     devbranch="main",
+    push_preview=true,
 )
