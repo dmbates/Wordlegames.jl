@@ -18,7 +18,9 @@ As a consequence, the initial pool of potential guesses is the same as the initi
 ```jl
 julia> using Chain, DataFrames, Random, Wordlegames
 
-julia> wordle = GamePool(collect(readlines("./data/Wordletargets.txt")));
+julia> datadir = joinpath(dirname(dirname(pathof(Wordlegames))), "data");
+
+julia> wordle = GamePool(collect(readlines(joinpath(datadir, "Wordletargets.txt"))));
 ```
 
 This creates a `GamePool` from the Wordle targets, a list of 2315 5-letter English words.
