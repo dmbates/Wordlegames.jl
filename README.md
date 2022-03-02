@@ -123,7 +123,7 @@ Platform Info:
   WORD_SIZE: 64
   LIBM: libopenlibm
   LLVM: libLLVM-13.0.1 (ORCJIT, tigerlake)
-  Threads: 4 on 8 virtual cores
+  Threads: 8 on 8 virtual cores
 ```
 
 The mean and standard deviation of the number of guesses for Wordle using this strategy
