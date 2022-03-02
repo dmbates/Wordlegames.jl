@@ -29,6 +29,7 @@ For example, suppose the target is `"super"`.
 It takes 6 guesses to isolate this target using this strategy.
 
 ```jl
+julia> showgame!(wordle, "super")
 4×7 DataFrame
  Row │ poolsz  index  guess   expected  entropy  score       sc    
      │ Int64   Int64  String  Float64   Float64  String      Int64 
@@ -122,7 +123,7 @@ Platform Info:
   WORD_SIZE: 64
   LIBM: libopenlibm
   LLVM: libLLVM-13.0.1 (ORCJIT, tigerlake)
-  Threads: 8 on 8 virtual cores
+  Threads: 4 on 8 virtual cores
 ```
 
 The mean and standard deviation of the number of guesses for Wordle using this strategy
