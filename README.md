@@ -9,8 +9,6 @@
 
 This [Julia](https://julialang.org) package allows for playing and analyzing [Wordle](https://en.wikipedia.org/wiki/Wordle) and related games, such as [Primel](https://cojofra.github.io/primel/).
 
-> **NOTE** This is a preliminary release.  The scoring of guesses with repeated characters needs to be fixed to conform with the games on the web.  See [issue #1](https://github.com/dmbates/Wordlegames.jl/issues)
-
 A game is represented by a `GamePool` object containing potential guesses, a subset of which are valid targets, and some game play status information.
 By default the game is played as in the "Hard Mode" setting on the Wordle app and web site, which means that the only guesses allowed at each turn are those in the current target pool.
 As a consequence, the initial pool of potential guesses is the same as the initial target pool.
@@ -29,17 +27,14 @@ For example, suppose the target is `"super"`.
 It takes 6 guesses to isolate this target using this strategy.
 
 ```jl
-julia> showgame!(wordle, "super")
-6×7 DataFrame
- Row │ poolsz  index  guess   expected  entropy    score       sc    
-     │ Int64   Int64  String  Float64   Float64    String      Int64 
-─────┼───────────────────────────────────────────────────────────────
-   1 │   2315   1535  raise   61.0009    5.87791   🟨🟫🟫🟨🟨     85
-   2 │     18   1744  shrew    2.66667   3.03856   🟩🟫🟨🟩🟫    177
-   3 │      5   1823  sneer    2.2       1.37095   🟩🟫🟨🟩🟩    179
-   4 │      3   1697  sever    1.66667   0.918296  🟩🟨🟫🟩🟩    197
-   5 │      2   1835  sober    1.0       1.0       🟩🟫🟫🟩🟩    170
-   6 │      1   1969  super    1.0      -0.0       🟩🟩🟩🟩🟩    242
+4×7 DataFrame
+ Row │ poolsz  index  guess   expected  entropy  score       sc    
+     │ Int64   Int64  String  Float64   Float64  String      Int64 
+─────┼─────────────────────────────────────────────────────────────
+   1 │   2315   1535  raise   61.0009   5.87791  🟨🟫🟫🟨🟨     85
+   2 │     18   1720  sheer    2.33333  3.12799  🟩🟫🟫🟩🟩    170
+   3 │      4   1835  sober    1.5      1.5      🟩🟫🟫🟩🟩    170
+   4 │      2   1969  super    1.0      1.0      🟩🟩🟩🟩🟩    242
 ```
 
 The size of the initial target pool is 2315.
@@ -56,10 +51,13 @@ The actual score in this game, represented as `🟨🟫🟫🟨🟨` in colored 
 But the real reason for this choice is that it is surprisingly difficult to get a consistent-width black or gray square symbol in many fonts.)
 
 There are only 18 of the 2315 possible targets that would have given this score.
-Of these 18 targets the guess that will do the best job of spreading out the distribution of scores is `"shrew"`.
-The actual score for this guess is `🟩🟫🟨🟩🟫`, meaning that the `s` and `e` are in the correct positions, the `r` is in the target but not in the third position, and neither `h` nor `w` are in the target.
+Of these 18 targets the guess that will do the best job of spreading out the distribution of scores is `"sheer"`.
+The actual score for this guess is `🟩🟫🟫🟩🟩`, meaning that the `s`, the second `e` and the `r` are in the correct positions, the `h` is not in the target and there isn't a second `e`.
 
-The size of the target pool is reduced to 5, which is larger than the expected size of 2.67, and the game continues with other guesses and other scores until the target, `"super"` is matched.
+(When a character is repeated in a guess, "correct position" takes precedence over "in the target" if there is only one instance of the character in the target.
+If none of the guesses are in the correct position then the first one takes precedence.)
+
+The size of the target pool is reduced to 4, which is larger than the expected size of 2.33, and the game continues with other guesses and other scores until the target, `"super"` is matched.
 
 If no target is specified in a call to `showgame!` or `playgame!` one is chosen at random from the set of possible targets.
 
@@ -73,7 +71,7 @@ julia> showgame!(wordle)
 ─────┼──────────────────────────────────────────────────────────────
    1 │   2315   1535  raise   61.0009    5.87791  🟫🟫🟫🟫🟫      0
    2 │    168   1275  mulch    6.85714   5.21165  🟫🟫🟫🟫🟨      1
-   3 │      6   1000  howdy    1.33333   2.25163  🟩🟩🟫🟫🟩    218
+   3 │      6   2262  whoop    1.0       2.58496  🟫🟨🟫🟫🟫     27
    4 │      1    985  hobby    1.0      -0.0      🟩🟩🟩🟩🟩    242
 ```
 
@@ -101,10 +99,10 @@ julia> barplot(countmap(nguesswordle))
      ┌                                        ┐ 
    1 ┤ 1                                        
    2 ┤■■■■■ 131                                 
-   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 978   
-   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 928     
-   5 ┤■■■■■■■■ 217                              
-   6 ┤■■ 49                                     
+   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 988   
+   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 927     
+   5 ┤■■■■■■■ 211                               
+   6 ┤■■ 46                                     
    7 ┤ 9                                        
    8 ┤ 2                                        
      └                                        ┘ 
@@ -114,22 +112,22 @@ Playing all possible Wordle games in this way takes less than half a second on a
 
 ```jl
 julia> versioninfo()
-Julia Version 1.8.0-DEV.1526
-Commit 635449dabe (2022-02-13 12:15 UTC)
+Julia Version 1.8.0-beta1
+Commit 7b711ce699 (2022-02-23 15:09 UTC)
 Platform Info:
-  OS: Linux (x86_64-linux-gnu)
+  OS: Linux (x86_64-pc-linux-gnu)
   CPU: 8 × 11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz
   WORD_SIZE: 64
   LIBM: libopenlibm
   LLVM: libLLVM-13.0.1 (ORCJIT, tigerlake)
-  Threads: 4 on 8 virtual cores
+  Threads: 8 on 8 virtual cores
 ```
 
 The mean and standard deviation of the number of guesses for Wordle using this strategy
 
 ```jl
-julia> (n̄ = mean(nguesswordle), s = std(nguesswordle)) 
-(n̄ = 3.614254859611231, s = 0.8552369532287724)
+julia> (n̄ = mean(nguesswordle), s = std(nguesswordle))
+(n̄ = 3.6047516198704104, s = 0.8488509015997353)
 ```
 
 are reasonable but not optimal.
@@ -148,9 +146,9 @@ julia> [showgame!(wordle, k) for k in findall(==(8), nguesswordle)]
      │ Int64   Int64  String  Float64   Float64    String      Int64 
 ─────┼───────────────────────────────────────────────────────────────
    1 │   2315   1535  raise   61.0009    5.87791   🟨🟫🟫🟫🟨     82
-   2 │    102   1352  outer    8.68627   4.09399   🟨🟫🟫🟩🟩     89
-   3 │     16   1271  mower    5.875     1.91974   🟫🟩🟫🟩🟩     62
-   4 │      9    451  cover    3.44444   1.65774   🟫🟩🟫🟩🟩     62
+   2 │    102    546  deter    9.47059   4.26463   🟫🟫🟫🟩🟩      8
+   3 │     26    454  cower    5.23077   2.74682   🟫🟩🟫🟩🟩     62
+   4 │      9    999  hover    3.44444   1.65774   🟫🟩🟫🟩🟩     62
    5 │      5   1059  joker    2.2       1.37095   🟫🟩🟫🟩🟩     62
    6 │      3    258  boxer    1.66667   0.918296  🟫🟩🟫🟩🟩     62
    7 │      2    800  foyer    1.0       1.0       🟫🟩🟫🟩🟩     62
@@ -163,7 +161,7 @@ julia> [showgame!(wordle, k) for k in findall(==(8), nguesswordle)]
    2 │     91   2012  tangy    7.48352   4.03061   🟨🟩🟫🟫🟫    135
    3 │     13    334  caput    2.84615   2.4997    🟨🟩🟫🟫🟨    136
    4 │      5    160  batch    3.4       0.721928  🟫🟩🟩🟩🟩     80
-   5 │      4    959  hatch    2.5       0.811278  🟨🟩🟩🟩🟩    161
+   5 │      4    959  hatch    2.5       0.811278  🟫🟩🟩🟩🟩     80
    6 │      3   1102  latch    1.66667   0.918296  🟫🟩🟩🟩🟩     80
    7 │      2   1206  match    1.0       1.0       🟫🟩🟩🟩🟩     80
    8 │      1   2233  watch    1.0      -0.0       🟩🟩🟩🟩🟩    242
@@ -195,16 +193,16 @@ julia> scoreupdate!(primel, [1,0,0,0,1]).summary
      │ Int64   Int64  String  Float64    Float64  String?     Int64?  
 ─────┼────────────────────────────────────────────────────────────────
    1 │   8363    313  12953   124.384    6.63227  🟨🟫🟫🟫🟨       82
-   2 │    236   2612  36187     6.30508  5.57465  missing     missing 
+   2 │    236   3728  48131     6.78814  5.67045  missing     missing 
 
-julia> scoreupdate!(primel, [2,2,1,0,0]).summary
+julia> scoreupdate!(primel, [0,0,1,1,2]).summary
 3×7 DataFrame
  Row │ poolsz  index  guess   expected   entropy  score       sc      
      │ Int64   Int64  String  Float64    Float64  String?     Int64?  
 ─────┼────────────────────────────────────────────────────────────────
    1 │   8363    313  12953   124.384    6.63227  🟨🟫🟫🟫🟨       82
-   2 │    236   2612  36187     6.30508  5.57465  🟩🟩🟨🟫🟫      225
-   3 │      3   2597  36011     1.0      1.58496  missing     missing 
+   2 │    236   3728  48131     6.78814  5.67045  🟫🟫🟨🟨🟩       14
+   3 │      7   2597  36011     1.0      2.80735  missing     missing 
 
 julia> scoreupdate!(primel, [2,2,2,2,2]).summary
 3×7 DataFrame
@@ -212,12 +210,11 @@ julia> scoreupdate!(primel, [2,2,2,2,2]).summary
      │ Int64   Int64  String  Float64    Float64  String      Int64 
 ─────┼──────────────────────────────────────────────────────────────
    1 │   8363    313  12953   124.384    6.63227  🟨🟫🟫🟫🟨     82
-   2 │    236   2612  36187     6.30508  5.57465  🟩🟩🟨🟫🟫    225
-   3 │      3   2597  36011     1.0      1.58496  🟩🟩🟩🟩🟩    242
+   2 │    236   3728  48131     6.78814  5.67045  🟫🟫🟨🟨🟩     14
+   3 │      7   2597  36011     1.0      2.80735  🟩🟩🟩🟩🟩    242
 ```
 
-Because there are more targets initially in Primel than in Wordle, the mean number of guesses is greater.
-However, the standard deviation of the length of Primel games played this way is smaller than that for Wordle, perhaps because the number of possible characters at each position (10) is smaller than for Wordle (26).
+Playing all possible Primel games produces statistics of
 
 ```jl
 julia> nguessprimel = [length(playgame!(primel, k).guesses) for k in axes(primel.active, 1)];
@@ -226,24 +223,27 @@ julia> barplot(countmap(nguessprimel))
      ┌                                        ┐ 
    1 ┤ 1                                        
    2 ┤■■ 215                                    
-   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■ 3070             
-   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 4363   
-   5 ┤■■■■■ 684                                 
-   6 ┤ 30                                       
+   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■ 3203            
+   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 4352   
+   5 ┤■■■■ 572                                  
+   6 ┤ 20                                       
      └                                        ┘ 
 
 julia> (n̄ = mean(nguessprimel), s = std(nguessprimel))
-(n̄ = 3.6700944637091952, s = 0.6770215085958287)
+(n̄ = 3.6384072701183787, s = 0.6589170506237669)
 ```
+
+Because there are more targets initially in Primel than in Wordle, the mean number of guesses is greater.
+However, the standard deviation of the length of Primel games played this way is smaller than that for Wordle, perhaps because the number of possible characters at each position (10) is smaller than for Wordle (26).
 
 ## Strategy
 
 Each turn in a Wordle-like game can be regarded as submitting a guess to an "oracle" which returns a score that is used to update the information on the play.
 Initially the target can be any element of the target pool.
 Each guess/score combination reduces the size of the target pool, as shown in the game summaries above.
-(In a `GamePool` object the actual pool of potential targets and guess is not modified.
-Instead there are two `BitVector` fields, of the same length as the `guesspool` field, that are used to keep track of which guesses are in the current guess pool and which targets are in the current target pool.)
 
+In a `GamePool` object the actual pool of potential targets and guesses is not modified.
+Instead there is a `BitVector` field, `active`, that is used to keep track of the active target pool.
 The size of the current target pool is the sum of `active`.
 
 The score for a particular guess is known to the oracle but not to the player.
@@ -284,6 +284,7 @@ julia> @chain DataFrame(score = tiles.(0:242, 5), counts = wordle.counts) begin
   14 │ 🟫🟫🟫🟨🟨      41
   15 │ 🟫🟨🟫🟫🟩      41
   ⋮  │     ⋮         ⋮
+ 118 │ 🟨🟨🟩🟫🟩       1
  119 │ 🟨🟨🟩🟩🟩       1
  120 │ 🟨🟩🟫🟩🟩       1
  121 │ 🟩🟫🟫🟨🟫       1
@@ -298,7 +299,7 @@ julia> @chain DataFrame(score = tiles.(0:242, 5), counts = wordle.counts) begin
  130 │ 🟩🟩🟫🟨🟫       1
  131 │ 🟩🟩🟩🟫🟫       1
  132 │ 🟩🟩🟩🟩🟩       1
-          103 rows omitted
+          102 rows omitted
 
 julia> (expectedpoolsize(wordle), entropy2(wordle))
 (61.00086393088553, 5.877909690821478)
@@ -331,16 +332,16 @@ julia> barplot(countmap(ngwrdle2))
      ┌                                        ┐ 
    1 ┤ 1                                        
    2 ┤■■■■■ 131                                 
-   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 944   
-   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 949   
-   5 ┤■■■■■■■■■ 233                             
-   6 ┤■■ 43                                     
+   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 950   
+   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 951   
+   5 ┤■■■■■■■■ 227                              
+   6 ┤■■ 41                                     
    7 ┤ 11                                       
    8 ┤ 3                                        
      └                                        ┘ 
 
 julia> (n̄ = mean(ngwrdle2), s = std(ngwrdle2))
-(n̄ = 3.634989200863931, s = 0.8622912420643568)
+(n̄ = 3.6280777537796975, s = 0.8573176158133516)
 ```
 
 ## Game play as a tree
@@ -356,26 +357,24 @@ julia> print_tree(tree(wordle, ["super", "hobby", "mince", "goner", "watch"]), m
 missing, raise, 1535, 2315, 5.87791, 61.0009
 ├─ 🟫🟫🟨🟫🟩, binge, 198, 25, 3.28386, 3.64
 │  └─ 🟫🟩🟩🟫🟩, mince, 1234, 2, 1.0, 1.0
-├─ 🟫🟫🟫🟫🟫, mulch, 1275, 168, 5.21165, 6.85714
-│  └─ 🟫🟫🟫🟫🟨, howdy, 1000, 6, 2.25163, 1.33333
-│     └─ 🟩🟩🟫🟫🟩, hobby, 985, 1, -0.0, 1.0
-├─ 🟨🟫🟫🟫🟨, outer, 1352, 102, 4.09399, 8.68627
-│  └─ 🟨🟫🟫🟩🟩, mower, 1271, 16, 1.91974, 5.875
-│     └─ 🟫🟩🟫🟩🟩, cover, 451, 9, 1.65774, 3.44444
+├─ 🟨🟫🟫🟫🟨, deter, 546, 102, 4.26463, 9.47059
+│  └─ 🟫🟫🟫🟩🟩, cower, 454, 26, 2.74682, 5.23077
+│     └─ 🟫🟩🟫🟩🟩, hover, 999, 9, 1.65774, 3.44444
 │        └─ 🟫🟩🟫🟩🟩, joker, 1059, 5, 1.37095, 2.2
 │           └─ 🟫🟩🟫🟩🟩, boxer, 258, 3, 0.918296, 1.66667
 │              └─ 🟫🟩🟫🟩🟩, foyer, 800, 2, 1.0, 1.0
 │                 └─ 🟫🟩🟫🟩🟩, goner, 884, 1, -0.0, 1.0
-├─ 🟨🟫🟫🟨🟨, shrew, 1744, 18, 3.03856, 2.66667
-│  └─ 🟩🟫🟨🟩🟫, sneer, 1823, 5, 1.37095, 2.2
-│     └─ 🟩🟫🟨🟩🟩, sever, 1697, 3, 0.918296, 1.66667
-│        └─ 🟩🟨🟫🟩🟩, sober, 1835, 2, 1.0, 1.0
-│           └─ 🟩🟫🟫🟩🟩, super, 1969, 1, -0.0, 1.0
+├─ 🟫🟫🟫🟫🟫, mulch, 1275, 168, 5.21165, 6.85714
+│  └─ 🟫🟫🟫🟫🟨, whoop, 2262, 6, 2.58496, 1.0
+│     └─ 🟫🟨🟫🟫🟫, hobby, 985, 1, -0.0, 1.0
+├─ 🟨🟫🟫🟨🟨, sheer, 1720, 18, 3.12799, 2.33333
+│  └─ 🟩🟫🟫🟩🟩, sober, 1835, 4, 1.5, 1.5
+│     └─ 🟩🟫🟫🟩🟩, super, 1969, 2, 1.0, 1.0
 └─ 🟫🟩🟫🟫🟫, tangy, 2012, 91, 4.03061, 7.48352
    └─ 🟨🟩🟫🟫🟫, caput, 334, 13, 2.4997, 2.84615
       └─ 🟨🟩🟫🟫🟨, batch, 160, 5, 0.721928, 3.4
          └─ 🟫🟩🟩🟩🟩, hatch, 959, 4, 0.811278, 2.5
-            └─ 🟨🟩🟩🟩🟩, latch, 1102, 3, 0.918296, 1.66667
+            └─ 🟫🟩🟩🟩🟩, latch, 1102, 3, 0.918296, 1.66667
                └─ 🟫🟩🟩🟩🟩, match, 1206, 2, 1.0, 1.0
                   └─ 🟫🟩🟩🟩🟩, watch, 2233, 1, -0.0, 1.0
 ```
@@ -387,7 +386,7 @@ The guess is "raise" at index 1535 with pool size 2315, an entropy of 5.88 and a
 If the score for "raise" is `🟫🟫🟨🟫🟩`, the next guess will be "binge", with the characteristics shown.
 If the score is `🟫🟫🟫🟫🟫`, which is the most likely score for the first guess, the next guess is "mulch", and so on.
 
-Note that in the tree the score is associated with the guess that it will produce next, whereas in the summary of the game the score is associated with its guess.
+Note that in the tree the score is associated with the guess that it will produce next, whereas in the summary of the game the score is associated with the guess that produced it.
 
 The reason that this tree is not very interesting is that it simply reproduces the game summaries, with the minor changes that the root node is common to all the games and the score tiles refer to the score that has been observed, not the score that will be observed.
 
@@ -399,18 +398,19 @@ missing, raise, 1535, 2315, 5.87791, 61.0009
 ├─ 🟨🟩🟩🟫🟫, dairy, 515, 4, 1.5, 1.5
 │  └─ 🟫🟩🟩🟩🟩, fairy, 699, 2, 1.0, 1.0
 │     └─ 🟫🟩🟩🟩🟩, hairy, 948, 1, -0.0, 1.0
+├─ 🟨🟫🟫🟫🟨, deter, 546, 102, 4.26463, 9.47059
+│  └─ 🟩🟩🟫🟫🟩, decor, 530, 2, 1.0, 1.0
+│     └─ 🟩🟩🟫🟫🟩, demur, 540, 1, -0.0, 1.0
 ├─ 🟫🟫🟫🟫🟫, mulch, 1275, 168, 5.21165, 6.85714
 │  ├─ 🟫🟩🟩🟫🟫, bully, 302, 6, 1.79248, 2.0
-│  │  └─ 🟫🟩🟩🟨🟩, pulpy, 1492, 1, -0.0, 1.0
+│  │  └─ 🟫🟩🟩🟫🟩, pulpy, 1492, 1, -0.0, 1.0
 │  ├─ 🟫🟨🟨🟨🟫, cloud, 419, 4, 2.0, 1.0
 │  │  └─ 🟩🟩🟩🟩🟫, clout, 420, 1, -0.0, 1.0
-│  └─ 🟫🟫🟫🟫🟨, howdy, 1000, 6, 2.25163, 1.33333
-│     └─ 🟩🟩🟫🟫🟩, hobby, 985, 1, -0.0, 1.0
+│  └─ 🟫🟫🟫🟫🟨, whoop, 2262, 6, 2.58496, 1.0
+│     └─ 🟫🟨🟫🟫🟫, hobby, 985, 1, -0.0, 1.0
 ├─ 🟫🟫🟫🟫🟨, olden, 1333, 121, 4.94243, 5.1157
 │  └─ 🟨🟨🟫🟨🟩, felon, 714, 3, 1.58496, 1.0
 │     └─ 🟫🟩🟩🟩🟩, melon, 1220, 1, -0.0, 1.0
-├─ 🟨🟫🟫🟫🟨, outer, 1352, 102, 4.09399, 8.68627
-│  └─ 🟫🟨🟫🟨🟩, demur, 540, 3, 0.918296, 1.66667
 ├─ 🟨🟩🟫🟫🟫, party, 1377, 26, 3.12276, 3.84615
 │  └─ 🟫🟩🟩🟫🟩, carry, 338, 4, 1.5, 1.5
 │     └─ 🟫🟩🟩🟩🟩, harry, 955, 2, 1.0, 1.0
@@ -419,7 +419,7 @@ missing, raise, 1535, 2315, 5.87791, 61.0009
 │  │  └─ 🟩🟩🟫🟩🟩, conic, 439, 1, -0.0, 1.0
 │  ├─ 🟫🟩🟫🟫🟨, width, 2267, 13, 2.93121, 2.07692
 │  │  └─ 🟫🟩🟫🟩🟫, bitty, 204, 4, 1.5, 1.5
-│  │     └─ 🟫🟩🟨🟩🟩, fifty, 733, 2, 1.0, 1.0
+│  │     └─ 🟫🟩🟫🟩🟩, fifty, 733, 2, 1.0, 1.0
 │  └─ 🟫🟩🟫🟫🟫, windy, 2274, 16, 3.20282, 1.875
 │     └─ 🟫🟩🟫🟫🟩, fizzy, 746, 2, 1.0, 1.0
 │        └─ 🟨🟩🟫🟫🟩, jiffy, 1056, 1, -0.0, 1.0
@@ -429,7 +429,7 @@ missing, raise, 1535, 2315, 5.87791, 61.0009
 ```
 
 Again, the root is "raise", which is the first guess in any game using the `MaximumEntropy` strategy, and if the first score is `🟫🟫🟫🟫🟫` then the second guess will be "mulch".
-But now in this selection of games the guess after "mulch" was "bully", "cloud" or "howdy" in different games.
+But now in this selection of games the guess after "mulch" was "bully", "cloud" or "whoop" in different games.
 
 In other words some of the games from the 12 randomly selected targets produced some games that overlapped in both the first and second guesses.
 Also, one of the games, for the target "satyr", got the target on the second guess.
