@@ -26,7 +26,7 @@ The `playgame!` and `showgame!` methods can play a Wordle game, selecting each g
 By default the guess is chosen to maximize the [entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory)) of the distribution of scores from the current target pool, as explained below.
 
 For example, suppose the target is `"super"`.
-It takes 6 guesses to isolate this target using this strategy.
+It takes 4 guesses to isolate this target using this strategy.
 
 ```jl
 julia> showgame!(wordle, "super")
