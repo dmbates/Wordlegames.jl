@@ -40,7 +40,7 @@ const primelxpc = GamePool(primes5; guesstype=MinimizeExpected)
     @test entropy ≈ [6.632274058429609, 5.479367512099353, 3.121928094887362]
     @test sc == [108, 112, 242]
     (; poolsz, guess, index, expected, entropy, score, sc) = showgame!(primel, "43867")
-    @test index == [313, 7029, 3337]
+    @test index == [313, 2387, 3273, 3337]
     # size mismatch
     @test_throws ArgumentError playgame!(primel, "4321")
     # errors in constructor arguments
@@ -60,6 +60,12 @@ end
     @test first(scorecolumn!(scores, targets[1], targets)) == 242
     @test_throws DimensionMismatch scorecolumn!(zeros(UInt8,4), targets[1], targets)
     @test scorecolumn!(scores, targets[3], targets)[3] == 242
+    targets = NTuple{5,Char}.(["12953", "34513", "51133", "51383"])
+    scores = scorecolumn!(similar(targets, UInt8), targets[4], targets)
+    @test first(scores) == 0x6e
+    @test last(scores) == 0xf2
+    scorecolumn!(scores, targets[2], targets)
+    @test last(scores) == 0x5f
 end
 
 @testset "scoretype" begin

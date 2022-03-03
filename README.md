@@ -14,7 +14,7 @@ By default the game is played as in the "Hard Mode" setting on the Wordle app an
 As a consequence, the initial pool of potential guesses is the same as the initial target pool.
 
 ```jl
-julia> using Chain, DataFrames, Random, Wordlegames
+julia> using Chain, DataFrames, Primes, Random, StatsBase, UnicodePlots, Wordlegames
 
 julia> datadir = joinpath(dirname(dirname(pathof(Wordlegames))), "data");
 
@@ -35,7 +35,7 @@ julia> showgame!(wordle, "super")
      │ Int64   Int64  String  Float64   Float64  String      Int64 
 ─────┼─────────────────────────────────────────────────────────────
    1 │   2315   1535  raise   61.0009   5.87791  🟨🟫🟫🟨🟨     85
-   2 │     18   1720  sheer    2.33333  3.12799  🟩🟫🟫🟩🟩    170
+   2 │     18   1720  sheer    2.11111  3.28104  🟩🟫🟫🟩🟩    170
    3 │      4   1835  sober    1.5      1.5      🟩🟫🟫🟩🟩    170
    4 │      2   1969  super    1.0      1.0      🟩🟩🟩🟩🟩    242
 ```
@@ -96,16 +96,14 @@ This mechanism allows for playing all of the 2315 possible games and accumulatin
 ```jl
 julia> nguesswordle = [length(playgame!(wordle, k).guesses) for k in axes(wordle.guesspool, 1)];
 
-julia> using StatsBase, UnicodePlots
-
 julia> barplot(countmap(nguesswordle))
      ┌                                        ┐ 
    1 ┤ 1                                        
    2 ┤■■■■■ 131                                 
-   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 988   
-   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 927     
-   5 ┤■■■■■■■ 211                               
-   6 ┤■■ 46                                     
+   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 999   
+   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 919      
+   5 ┤■■■■■■■ 207                               
+   6 ┤■■ 47                                     
    7 ┤ 9                                        
    8 ┤ 2                                        
      └                                        ┘ 
@@ -123,14 +121,14 @@ Platform Info:
   WORD_SIZE: 64
   LIBM: libopenlibm
   LLVM: libLLVM-13.0.1 (ORCJIT, tigerlake)
-  Threads: 8 on 8 virtual cores
+  Threads: 4 on 8 virtual cores
 ```
 
 The mean and standard deviation of the number of guesses for Wordle using this strategy
 
 ```jl
 julia> (n̄ = mean(nguesswordle), s = std(nguesswordle))
-(n̄ = 3.6047516198704104, s = 0.8488509015997353)
+(n̄ = 3.5991360691144707, s = 0.8490164812102081)
 ```
 
 are reasonable but not optimal.
@@ -143,13 +141,13 @@ The games that require 8 guesses are
 
 ```jl
 julia> [showgame!(wordle, k) for k in findall(==(8), nguesswordle)]
-2-element Vector{DataFrames.DataFrame}:
+2-element Vector{DataFrame}:
  8×7 DataFrame
  Row │ poolsz  index  guess   expected  entropy    score       sc    
      │ Int64   Int64  String  Float64   Float64    String      Int64 
 ─────┼───────────────────────────────────────────────────────────────
    1 │   2315   1535  raise   61.0009    5.87791   🟨🟫🟫🟫🟨     82
-   2 │    102    546  deter    9.47059   4.26463   🟫🟫🟫🟩🟩      8
+   2 │    102    546  deter    9.23529   4.37007   🟫🟫🟫🟩🟩      8
    3 │     26    454  cower    5.23077   2.74682   🟫🟩🟫🟩🟩     62
    4 │      9    999  hover    3.44444   1.65774   🟫🟩🟫🟩🟩     62
    5 │      5   1059  joker    2.2       1.37095   🟫🟩🟫🟩🟩     62
@@ -179,8 +177,6 @@ The Primel game from 2022-02-15 can be played by entering the scores after each 
 The `summary` property of a `GamePool` shows the guesses and scores to this point, and the next guess to use.
 
 ```jl
-julia> using Primes
-
 julia> primel = GamePool(primes(10000, 99999));
 
 julia> primel.summary
@@ -196,16 +192,16 @@ julia> scoreupdate!(primel, [1,0,0,0,1]).summary
      │ Int64   Int64  String  Float64    Float64  String?     Int64?  
 ─────┼────────────────────────────────────────────────────────────────
    1 │   8363    313  12953   124.384    6.63227  🟨🟫🟫🟫🟨       82
-   2 │    236   3728  48131     6.78814  5.67045  missing     missing 
+   2 │    236   2612  36187     6.30508  5.57465  missing     missing 
 
-julia> scoreupdate!(primel, [0,0,1,1,2]).summary
+julia> scoreupdate!(primel, [2,2,1,0,0]).summary
 3×7 DataFrame
  Row │ poolsz  index  guess   expected   entropy  score       sc      
      │ Int64   Int64  String  Float64    Float64  String?     Int64?  
 ─────┼────────────────────────────────────────────────────────────────
    1 │   8363    313  12953   124.384    6.63227  🟨🟫🟫🟫🟨       82
-   2 │    236   3728  48131     6.78814  5.67045  🟫🟫🟨🟨🟩       14
-   3 │      7   2597  36011     1.0      2.80735  missing     missing 
+   2 │    236   2612  36187     6.30508  5.57465  🟩🟩🟨🟫🟫      225
+   3 │      3   2597  36011     1.0      1.58496  missing     missing 
 
 julia> scoreupdate!(primel, [2,2,2,2,2]).summary
 3×7 DataFrame
@@ -213,8 +209,8 @@ julia> scoreupdate!(primel, [2,2,2,2,2]).summary
      │ Int64   Int64  String  Float64    Float64  String      Int64 
 ─────┼──────────────────────────────────────────────────────────────
    1 │   8363    313  12953   124.384    6.63227  🟨🟫🟫🟫🟨     82
-   2 │    236   3728  48131     6.78814  5.67045  🟫🟫🟨🟨🟩     14
-   3 │      7   2597  36011     1.0      2.80735  🟩🟩🟩🟩🟩    242
+   2 │    236   2612  36187     6.30508  5.57465  🟩🟩🟨🟫🟫    225
+   3 │      3   2597  36011     1.0      1.58496  🟩🟩🟩🟩🟩    242
 ```
 
 Playing all possible Primel games produces statistics of
@@ -226,14 +222,14 @@ julia> barplot(countmap(nguessprimel))
      ┌                                        ┐ 
    1 ┤ 1                                        
    2 ┤■■ 215                                    
-   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■ 3203            
-   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 4352   
-   5 ┤■■■■ 572                                  
-   6 ┤ 20                                       
+   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■ 3173             
+   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 4477   
+   5 ┤■■■■ 482                                  
+   6 ┤ 15                                       
      └                                        ┘ 
 
 julia> (n̄ = mean(nguessprimel), s = std(nguessprimel))
-(n̄ = 3.6384072701183787, s = 0.6589170506237669)
+(n̄ = 3.6300370680377854, s = 0.6413308603862167)
 ```
 
 Because there are more targets initially in Primel than in Wordle, the mean number of guesses is greater.
@@ -258,7 +254,7 @@ For example the first guess chosen in the Wordle games shown about is `"raise"`,
 ```jl
 julia> reset!(wordle);  # reset the `GamePool` to its initial state
 
-julia> only(wordle.guesses).index  # check that there is exactly one guess and return its index in guesspool
+julia> only(wordle.guesses).index  # check there is exactly one guess and return its indexl
 1535
 
 julia> bincounts!(wordle, 1535);   # evaluate the bin counts for that guess
@@ -335,16 +331,16 @@ julia> barplot(countmap(ngwrdle2))
      ┌                                        ┐ 
    1 ┤ 1                                        
    2 ┤■■■■■ 131                                 
-   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 950   
-   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 951   
-   5 ┤■■■■■■■■ 227                              
-   6 ┤■■ 41                                     
+   3 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 957   
+   4 ┤■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ 946   
+   5 ┤■■■■■■■■ 224                              
+   6 ┤■■ 42                                     
    7 ┤ 11                                       
    8 ┤ 3                                        
      └                                        ┘ 
 
 julia> (n̄ = mean(ngwrdle2), s = std(ngwrdle2))
-(n̄ = 3.6280777537796975, s = 0.8573176158133516)
+(n̄ = 3.624622030237581, s = 0.8578269827640186)
 ```
 
 ## Game play as a tree
@@ -360,7 +356,7 @@ julia> print_tree(tree(wordle, ["super", "hobby", "mince", "goner", "watch"]), m
 missing, raise, 1535, 2315, 5.87791, 61.0009
 ├─ 🟫🟫🟨🟫🟩, binge, 198, 25, 3.28386, 3.64
 │  └─ 🟫🟩🟩🟫🟩, mince, 1234, 2, 1.0, 1.0
-├─ 🟨🟫🟫🟫🟨, deter, 546, 102, 4.26463, 9.47059
+├─ 🟨🟫🟫🟫🟨, deter, 546, 102, 4.37007, 9.23529
 │  └─ 🟫🟫🟫🟩🟩, cower, 454, 26, 2.74682, 5.23077
 │     └─ 🟫🟩🟫🟩🟩, hover, 999, 9, 1.65774, 3.44444
 │        └─ 🟫🟩🟫🟩🟩, joker, 1059, 5, 1.37095, 2.2
@@ -369,8 +365,8 @@ missing, raise, 1535, 2315, 5.87791, 61.0009
 │                 └─ 🟫🟩🟫🟩🟩, goner, 884, 1, -0.0, 1.0
 ├─ 🟫🟫🟫🟫🟫, mulch, 1275, 168, 5.21165, 6.85714
 │  └─ 🟫🟫🟫🟫🟨, whoop, 2262, 6, 2.58496, 1.0
-│     └─ 🟫🟨🟫🟫🟫, hobby, 985, 1, -0.0, 1.0
-├─ 🟨🟫🟫🟨🟨, sheer, 1720, 18, 3.12799, 2.33333
+│     └─ 🟫🟨🟨🟫🟫, hobby, 985, 1, -0.0, 1.0
+├─ 🟨🟫🟫🟨🟨, sheer, 1720, 18, 3.28104, 2.11111
 │  └─ 🟩🟫🟫🟩🟩, sober, 1835, 4, 1.5, 1.5
 │     └─ 🟩🟫🟫🟩🟩, super, 1969, 2, 1.0, 1.0
 └─ 🟫🟩🟫🟫🟫, tangy, 2012, 91, 4.03061, 7.48352
@@ -398,10 +394,14 @@ It is more interesting to play a random selection of games
 ```jl
 julia> print_tree(tree(wordle, Random.seed!(1234321), 12))
 missing, raise, 1535, 2315, 5.87791, 61.0009
+├─ 🟫🟫🟫🟫🟨, betel, 189, 121, 5.06266, 4.95041
+│  └─ 🟫🟩🟫🟫🟨, cello, 349, 9, 2.9477, 1.22222
+│     └─ 🟫🟩🟩🟫🟨, felon, 714, 2, 1.0, 1.0
+│        └─ 🟫🟩🟩🟩🟩, melon, 1220, 1, -0.0, 1.0
 ├─ 🟨🟩🟩🟫🟫, dairy, 515, 4, 1.5, 1.5
 │  └─ 🟫🟩🟩🟩🟩, fairy, 699, 2, 1.0, 1.0
 │     └─ 🟫🟩🟩🟩🟩, hairy, 948, 1, -0.0, 1.0
-├─ 🟨🟫🟫🟫🟨, deter, 546, 102, 4.26463, 9.47059
+├─ 🟨🟫🟫🟫🟨, deter, 546, 102, 4.37007, 9.23529
 │  └─ 🟩🟩🟫🟫🟩, decor, 530, 2, 1.0, 1.0
 │     └─ 🟩🟩🟫🟫🟩, demur, 540, 1, -0.0, 1.0
 ├─ 🟫🟫🟫🟫🟫, mulch, 1275, 168, 5.21165, 6.85714
@@ -410,10 +410,7 @@ missing, raise, 1535, 2315, 5.87791, 61.0009
 │  ├─ 🟫🟨🟨🟨🟫, cloud, 419, 4, 2.0, 1.0
 │  │  └─ 🟩🟩🟩🟩🟫, clout, 420, 1, -0.0, 1.0
 │  └─ 🟫🟫🟫🟫🟨, whoop, 2262, 6, 2.58496, 1.0
-│     └─ 🟫🟨🟫🟫🟫, hobby, 985, 1, -0.0, 1.0
-├─ 🟫🟫🟫🟫🟨, olden, 1333, 121, 4.94243, 5.1157
-│  └─ 🟨🟨🟫🟨🟩, felon, 714, 3, 1.58496, 1.0
-│     └─ 🟫🟩🟩🟩🟩, melon, 1220, 1, -0.0, 1.0
+│     └─ 🟫🟨🟨🟫🟫, hobby, 985, 1, -0.0, 1.0
 ├─ 🟨🟩🟫🟫🟫, party, 1377, 26, 3.12276, 3.84615
 │  └─ 🟫🟩🟩🟫🟩, carry, 338, 4, 1.5, 1.5
 │     └─ 🟫🟩🟩🟩🟩, harry, 955, 2, 1.0, 1.0
@@ -434,7 +431,7 @@ missing, raise, 1535, 2315, 5.87791, 61.0009
 Again, the root is "raise", which is the first guess in any game using the `MaximumEntropy` strategy, and if the first score is `🟫🟫🟫🟫🟫` then the second guess will be "mulch".
 But now in this selection of games the guess after "mulch" was "bully", "cloud" or "whoop" in different games.
 
-In other words some of the games from the 12 randomly selected targets produced some games that overlapped in both the first and second guesses.
+In other words some of the games from the 12 randomly selected targets overlapped in both the first and second guesses.
 Also, one of the games, for the target "satyr", got the target on the second guess.
 
 A tree representation of all possible games can be written to a file as

@@ -27,36 +27,43 @@ function scorecolumn!(
     targets::AbstractVector{NTuple{N,Char}},
 ) where {N}
     if axes(col) ≠ axes(targets)
-        throw(DimensionMismatch("axes(col) = $(axes(col)) ≠ $(axes(targets)) = axes(targets)"))
+        throw(
+            DimensionMismatch("axes(col) = $(axes(col)) ≠ $(axes(targets)) = axes(targets)")
+        )
     end
     if hasdups(guess)
-        svec = Vector{Int}(undef, N)         # scores for characters in guess
+        onetoN = (1:N...,)
+        svec = zeros(Int, N)                 # scores for characters in guess
         unused = trues(N)                    # has a character in targets[i] been used
         @inbounds for i in axes(targets, 1)
-            sc = 0                           # integer value of score
             targeti = targets[i]
-            for j in 1:N                 # first pass checking for target in same position
+            fill!(unused, true)
+            fill!(svec, 0)
+            for j in 1:N                     # first pass for target in same position
                 if guess[j] == targeti[j]
                     unused[j] = false
                     svec[j] = 2
-                else
-                    unused[j] = true
-                    svec[j] = 0
                 end
             end
-            for j in 1:N                 # second pass for match in unused position
-                sc *= 3
-                svj = svec[j]
-                if iszero(svj) && guess[j] ∈ targeti[unused]
-                    sc += 1
-                    unused[j] = false
-                else
-                    sc += svj
+            for j in 1:N                     # second pass for match in unused position
+                if iszero(svec[j])
+                    for k in onetoN[unused]
+                        if guess[j] == targeti[k]
+                            svec[j] = 1
+                            unused[k] = false
+                            break
+                        end
+                    end
                 end
+            end
+            sc = 0                           # similar to undup for evaluating score
+            for s in svec
+                sc *= 3
+                sc += s
             end
             col[i] = sc
         end
-    else                                 # simplified algorithm for guess w/o duplicates
+    else                                     # simplified alg. for guess w/o duplicates
         @inbounds for i in axes(targets, 1)
             sc = 0
             targeti = targets[i]
