@@ -9,10 +9,11 @@ GuessScore
 bincounts!
 entropy2
 expectedpoolsize
+Wordlegames.hasdups
 optimalguess
 playgame!
 reset!
-score
+scorecolumn!
 scoreupdate!
 showgame!
 tiles

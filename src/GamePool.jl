@@ -26,7 +26,7 @@ The fields are:
 - `guesspool`: a `Vector{NTuple{N,Char}}` of potential guesses
 - `validtargets`: a `BitVector` of valid targets in the `guesspool`
 - `allscores`: a cache of pre-computed scores as a `Matrix{S}` of size `(sum(validtargets), length(guesspool))`
-- `active`: a `BitVector`. The active pool of targets is `guesspool[active]`.
+- `active`: `BitVector` of length `sum(validtargets)`. The active pool of targets is `guesspool[validtargets][active]`.
 - `counts`: `Vector{Int}` of length `3 ^ N` in which bin counts are accumulated
 - `guesses`: `Vector{GuessScore}` recording game play
 - `hardmode`: `Bool` - should the game be played in "Hard Mode"?
@@ -61,11 +61,12 @@ function GamePool(
         throw(ArgumentError("lengths of `guesspool` and `validtargets` must match"))
     end
     ## enhancements - remove any duplicates in guesspool
-    allscores = ThreadsX.map(
-        t -> score(last(t), first(t)),
-        Iterators.product(view(guesspool, validtargets), guesspool),
-    )
-    S = eltype(allscores)
+    S = scoretype(N)
+    vtargs = view(guesspool, validtargets)
+    allscores = Array{S}(undef, length(vtargs), length(guesspool))
+    Threads.@threads for j in axes(allscores, 2)
+        scorecolumn!(view(allscores, :, j), guesspool[j], vtargs)
+    end
     return updateguess!(
         GamePool{N,S,guesstype}(
             guesspool,
@@ -181,7 +182,6 @@ Return the optimal guess as a `Tuple{Int,Float64,Float64}` from
 """
 function optimalguess(gp::GamePool{N,S,MaximizeEntropy}) where {N,S}
     gind, xpctd, entrpy = 0, Inf, -Inf
-    poolsize = sum(gp.active)
     for (k, a) in enumerate(gp.active)
         if a
             thisentropy = entropy2(bincounts!(gp, k))
@@ -269,65 +269,7 @@ function reset!(gp::GamePool)
     return gp
 end
 
-"""
-    score(guess, target)
-    score(gp::GamePool, targetind::Integer)
-
-Return a generalized Wordle score for `guess` at `target`, as an `Int` in `0:((3^length(zip(guess,target))) - 1)`.
-
-The second method returns a precomputed score at `gp.allscores[targetind, last(gp.guessinds)]`.
-
-In Wordle both `guess` and `target` would be length-5 character strings and each position
-in `guess` is scored as green if it matches `target` in the same position, yellow if it
-matches `target` in another position, and gray if there is no match. This function returns
-such a score as a number whose base-3 representation is 0 for no match, 1 for a match in
-another position and 2 for a match in the same position.
-    
-See also: [`tiles`](@ref) for converting this numeric score to colored tiles.
-"""
-function score(guess, target)
-    s = 0
-    for (g, t) in zip(guess, target)
-        s *= 3
-        s += (g == t ? 2 : Int(g ∈ target))
-    end
-    return s
-end
-
-function score(guess::NTuple{N}, target::NTuple{N}) where {N}
-    S = scoretype(N)
-    s = zero(S)
-    for i in 1:N
-        s *= S(3)
-        g = guess[i]
-        s += (g == target[i] ? S(2) : S(g ∈ target))
-    end
-    return s
-end
-
 score(gp::GamePool, targetind::Integer) = gp.allscores[targetind, last(gp.guesses).index]
-
-"""
-	scoretype(nchar)
-
-Return the smallest type `T<:Unsigned` for storing the scores from a pool of items of length `nchar`
-"""
-@inline function scoretype(nchar)
-    if nchar ≤ 0 || nchar > 80
-        throw(ArgumentError("nchar = $nchar is not in `1:80`"))
-    end
-    return if nchar ≤ 5
-        UInt8
-    elseif nchar ≤ 10
-        UInt16
-    elseif nchar ≤ 20
-        UInt32
-    elseif nchar ≤ 40
-        UInt64
-    else
-        UInt128
-    end
-end
 
 """
     scoreupdate!(gp::GamePool, sc::Integer)
@@ -366,20 +308,6 @@ function showgame!(gp::GamePool, target)
 end
 
 showgame!(gp::GamePool) = showgame!(gp, rand(axes(gp.active, 1)))
-
-"""
-	tiles(score, ntiles)
-
-Return a length-`ntiles` `String` tile pattern from the numeric score `score`.
-"""
-function tiles(sc, ntiles)
-    result = sizehint!(Char[], ntiles)    # initialize to an empty array of Char
-    for _ in 1:ntiles                     # _ indicates we won't use the value of the iterator
-        sc, r = divrem(sc, 3)
-        push!(result, iszero(r) ? '🟫' : (isone(r) ? '🟨' : '🟩'))
-    end
-    return String(reverse(result))
-end
 
 """
     updateguess!(gp::GamePool)

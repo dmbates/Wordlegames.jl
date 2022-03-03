@@ -4,16 +4,17 @@ using AbstractTrees
 using DataFrames
 using Random
 using Tables
-using ThreadsX
 
 using AbstractTrees: print_tree
 
+include("utilities.jl")
 include("GamePool.jl")
 include("trees.jl")
 
 export GameNode,
     GamePool,
     GuessScore,
+    GuessType,
     MinimizeExpected,
     MaximizeEntropy,
     Random,
@@ -26,7 +27,7 @@ export GameNode,
     print_tree,
     reset!,
     rowtable,
-    score,
+    scorecolumn!,
     scoreupdate!,
     showgame!,
     tiles,

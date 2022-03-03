@@ -40,7 +40,7 @@ const primelxpc = GamePool(primes5; guesstype=MinimizeExpected)
     @test entropy ≈ [6.632274058429609, 5.479367512099353, 3.121928094887362]
     @test sc == [108, 112, 242]
     (; poolsz, guess, index, expected, entropy, score, sc) = showgame!(primel, "43867")
-    @test index == [313, 2060, 3337]
+    @test index == [313, 2387, 3273, 3337]
     # size mismatch
     @test_throws ArgumentError playgame!(primel, "4321")
     # errors in constructor arguments
@@ -54,23 +54,18 @@ const primelxpc = GamePool(primes5; guesstype=MinimizeExpected)
     @test Tables.isrowtable(playgame!(primel).guesses)  # this also covers the playgame! method for testing
 end
 
-@testset "score" begin
-    raiseS = "raise"
-    raiseN = NTuple{5,Char}(raiseS)
-    superS = "super"
-    superN = NTuple{5,Char}(superS)
-
-    @test score(raiseS, raiseS) == 242
-    @test score(raiseN, raiseN) == 242
-    @test score(raiseS, superS) == 85
-    @test score(raiseN, superS) == 85
-    @test score(raiseS, superN) == 85
-    @test score(raiseN, superN) == 85
-    reset!(primel)
-    @test score(primel, 1) == 0xa2
-    @test score(primel, 3426) == 0x09
-    @test_throws BoundsError score(primel, -1)
-    @test_throws BoundsError score(primel, 8364)
+@testset "scorecolumn!" begin
+    targets = NTuple{5,Char}.(["raise", "super", "adapt", "algae", "abbey"])
+    scores = similar(targets, UInt8)
+    @test first(scorecolumn!(scores, targets[1], targets)) == 242
+    @test_throws DimensionMismatch scorecolumn!(zeros(UInt8,4), targets[1], targets)
+    @test scorecolumn!(scores, targets[3], targets)[3] == 242
+    targets = NTuple{5,Char}.(["12953", "34513", "51133", "51383"])
+    scores = scorecolumn!(similar(targets, UInt8), targets[4], targets)
+    @test first(scores) == 0x6e
+    @test last(scores) == 0xf2
+    scorecolumn!(scores, targets[2], targets)
+    @test last(scores) == 0x5f
 end
 
 @testset "scoretype" begin
