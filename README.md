@@ -57,10 +57,10 @@ There are only 18 of the 2315 possible targets that would have given this score.
 Of these 18 targets the guess that will do the best job of spreading out the distribution of scores is `"sheer"`.
 The actual score for this guess is `🟩🟫🟫🟩🟩`, meaning that the `s`, the second `e` and the `r` are in the correct positions, the `h` is not in the target and there isn't a second `e`.
 
-(When a character is repeated in a guess, "correct position" takes precedence over "in the target" if there is only one instance of the character in the target.
-If none of the guesses are in the correct position then the first one takes precedence.)
+(When a character is repeated in a guess but occurs only once in the target, "correct position" takes precedence over "in the target", as in this case.
+If none of the guesses are in the correct position then the leftmost position in the guess takes precedence.)
 
-The size of the target pool is reduced to 4, which is larger than the expected size of 2.33, and the game continues with other guesses and other scores until the target, `"super"` is matched.
+The size of the target pool is reduced to 4, which is larger than the expected size of 2.11, and the game continues with another guess (`"sober"`) and another score (`🟩🟫🟫🟩🟩`) until the target, `"super"` is matched.
 
 If no target is specified in a call to `showgame!` or `playgame!` one is chosen at random from the set of possible targets.
 
@@ -94,7 +94,7 @@ julia> showgame!(wordle, 1234)
 This mechanism allows for playing all of the 2315 possible games and accumulating some statistics.
 
 ```jl
-julia> nguesswordle = [length(playgame!(wordle, k).guesses) for k in axes(wordle.guesspool, 1)];
+julia> nguesswordle = [length(playgame!(wordle, k).guesses) for k in axes(wordle.targetpool, 1)];
 
 julia> barplot(countmap(nguesswordle))
      ┌                                        ┐ 
@@ -173,7 +173,7 @@ julia> [showgame!(wordle, k) for k in findall(==(8), nguesswordle)]
 Wordle has spawned a huge number of [related games](https://rwmpelstilzchen.gitlab.io/wordles/).
 
 One such game is [Primel](https://converged.yt/primel/) where the targets are 5-digit prime numbers.
-The Primel game from 2022-02-15 can be played by entering the scores after each guess is copied onto the game-play page.
+The Primel game from 2022-02-15 was played by entering the scores manually with `scoreupdate!` after each guess is copied onto the game-play page.
 The `summary` property of a `GamePool` shows the guesses and scores to this point, and the next guess to use.
 
 ```jl
