@@ -1,11 +1,11 @@
 """
     GameNode
 
-Node type for tree representing game play on a `GamePool{N}`(@ref)
+Node type for tree representing game play on a [`GamePool{N}`](@ref)
 
 Fields are:
 
-- `score`: a `GameScore`(@ref) for this target based on the score that generated the node
+- `score`: a [`GameScore`](@ref) for this target based on the score that generated the node
 - `children`: `Vector{GameNode}` of children of this node
 """
 struct GameNode
