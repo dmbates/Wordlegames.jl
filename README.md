@@ -254,7 +254,7 @@ For example the first guess chosen in the Wordle games shown about is `"raise"`,
 ```jl
 julia> reset!(wordle);  # reset the `GamePool` to its initial state
 
-julia> only(wordle.guesses).index  # check there is exactly one guess and return its indexl
+julia> only(wordle.guesses).index  # check there is exactly one guess and return its index
 1535
 
 julia> bincounts!(wordle, 1535);   # evaluate the bin counts for that guess
