@@ -87,7 +87,7 @@ end
     io = IOBuffer()
     primetree = tree(primel)
     print_tree(io, primetree; maxdepth=8)
-    @test length(take!(io)) > 500_000
+    @test length(take!(io)) > 480_000
     rootscore = primetree.score
     @test isa(rootscore, GuessScore)
     @test rootscore.guess == "12953"
