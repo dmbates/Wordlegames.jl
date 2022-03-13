@@ -70,7 +70,7 @@ function scorecolumn!(
             for j in 1:N
                 sc *= 3
                 gj = guess[j]
-                sc += (gj == targeti[j] ? 2 : gj ∈ targeti)
+                sc += (gj == targeti[j]) ? 2 : Int(gj ∈ targeti)
             end
             col[i] = sc
         end

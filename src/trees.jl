@@ -18,9 +18,7 @@ AbstractTrees.children(gn::GameNode) = gn.children
 function AbstractTrees.printnode(io::IO, gn::GameNode)
     (; poolsz, guess, expected, entropy, score) = gn.score
     return join(
-        IOContext(io, :compact => true),
-        (score, guess, poolsz, entropy, expected),
-        ", ",
+        IOContext(io, :compact => true), (score, guess, poolsz, entropy, expected), ", "
     )
 end
 
@@ -78,7 +76,7 @@ function tree(gp::GamePool{N,S}, targetinds::AbstractVector{<:Integer}) where {N
     for node in PreOrderDFS(value)
         sort!(node.children; by=treesize, rev=true)
     end
-    value
+    return value
 end
 
 function tree(gp::GamePool{N}, targets::AbstractVector{NTuple{N,Char}}) where {N}
@@ -100,4 +98,4 @@ function tree(gp::GamePool)
     return tree(gp, view(axes(validtargets, 1), validtargets))
 end
 
-treesize(node) = 1 + mapreduce(treesize, +, children(node), init=0)
+treesize(node) = 1 + mapreduce(treesize, +, children(node); init=0)
