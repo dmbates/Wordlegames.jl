@@ -16,11 +16,9 @@ end
 AbstractTrees.children(gn::GameNode) = gn.children
 
 function AbstractTrees.printnode(io::IO, gn::GameNode)
-    (; poolsz, guess, index, expected, entropy, score) = gn.score
+    (; poolsz, guess, expected, entropy, score) = gn.score
     return join(
-        IOContext(io, :compact => true),
-        (score, guess, index, poolsz, entropy, expected),
-        ", ",
+        IOContext(io, :compact => true), (score, guess, poolsz, entropy, expected), ", "
     )
 end
 
@@ -37,40 +35,35 @@ A `print_tree` method is available for this tree.
 function tree(gp::GamePool{N,S}, targetinds::AbstractVector{<:Integer}) where {N,S}
     (; guesspool) = reset!(gp)
     nguesspool = length(guesspool)
-    rootguess = first(gp.guesses)
+    rootguess = first(gp.guesses)     # reset! preserves the first guess, which will be the root
     rootindex = rootguess.index
-    guessmap = Dict{Int,GuessScore}(rootindex => rootguess)
-    pathmap = Dict{Int,Vector{Int}}()
-    activeinds = sizehint!(BitSet(), nguesspool)
+    guessmap = Dict{Int,GuessScore}(rootindex => rootguess)  # maps indexes to guesses
+    pathmap = Dict{Int,Vector{Int}}()            # maps a guess index to a path
+    activeinds = sizehint!(BitSet(), nguesspool) # keep track of indexes already encountered
     for t in targetinds
-        (; guesses) = playgame!(gp, t)
-        inds = getfield.(guesses, :index)
-        union!(activeinds, inds)
-        for (j, k) in enumerate(inds)
-            indviewj = view(inds, 1:j)
-            @assert get!(pathmap, k, indviewj) == indviewj  # store or verify
-            if j > 1
-                (; poolsz, index, guess, expected, entropy) = guesses[j]
-                (; score, sc) = guesses[j - 1]
-                g = (; poolsz, index, guess, expected, entropy, score, sc)
-                @assert get!(guessmap, k, g) == g           # store or verify
+        if t ∉ activeinds                        # skip if this node has already been encountered
+            (; guesses) = playgame!(gp, t)       # extract the guesses for the game
+            inds = getfield.(guesses, :index)    # indexes for this game
+            union!(activeinds, inds)             # add these to the activeinds
+            for (j, k) in enumerate(inds)
+                indviewj = view(inds, 1:j)
+                @assert get!(pathmap, k, indviewj) == indviewj  # store or verify
+                if j > 1
+                    (; poolsz, index, guess, expected, entropy) = guesses[j]
+                    (; score, sc) = guesses[j - 1]
+                    g = (; poolsz, index, guess, expected, entropy, score, sc)
+                    @assert get!(guessmap, k, g) == g           # store or verify
+                end
             end
         end
     end
     childmap = Dict(i => BitSet() for i in activeinds)
-    # If we could do a PreOrderDFS on just the childmap we could add the parent to a GameNode
-    # parentmap = Dict{Int, Union{Nothing,Int}}(rootindex => nothing)
     for path in getindex.(Ref(pathmap), activeinds)
         npath = length(path)
         npathm1 = npath - 1
         for i in 1:npathm1
             push!(childmap[path[i]], path[i + 1])
         end
-        #=        
-        if npath > 1
-            parentmap[path[npath]] = path[npathm1]
-        end
-        =#
     end
     allnodes = [GameNode(guessmap[k], GameNode[]) for k in activeinds]
     inversemap = Dict(k => i for (i, k) in enumerate(activeinds))
@@ -79,7 +72,11 @@ function tree(gp::GamePool{N,S}, targetinds::AbstractVector{<:Integer}) where {N
             push!(allnodes[i].children, allnodes[inversemap[j]])
         end
     end
-    return allnodes[inversemap[rootindex]]
+    value = allnodes[inversemap[rootindex]]
+    for node in PreOrderDFS(value)
+        sort!(node.children; by=treesize, rev=true)
+    end
+    return value
 end
 
 function tree(gp::GamePool{N}, targets::AbstractVector{NTuple{N,Char}}) where {N}
@@ -100,3 +97,5 @@ function tree(gp::GamePool)
     (; validtargets) = gp
     return tree(gp, view(axes(validtargets, 1), validtargets))
 end
+
+treesize(node) = 1 + mapreduce(treesize, +, children(node); init=0)
