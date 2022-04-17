@@ -14,6 +14,7 @@ struct GameNode
 end
 
 AbstractTrees.children(gn::GameNode) = gn.children
+AbstractTrees.nodetype(::GameNode) = GameNode
 
 function AbstractTrees.printnode(io::IO, gn::GameNode)
     (; poolsz, guess, expected, entropy, score) = gn.score
